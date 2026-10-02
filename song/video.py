@@ -263,6 +263,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     ev.append(f"Dialogue: 2,{ts(o0)},{ts(tl['duration'])},Title,,0,0,0,,{{\\pos({W // 2},290)\\fad(1000,800)}}{title}")
     ev.append(f"Dialogue: 2,{ts(o0 + 1.0)},{ts(tl['duration'])},Sub,,0,0,0,,{{\\pos({W // 2},360)\\fad(1000,800)}}"
               "Teksts, mūzika un video: Claude Code  ·  Python · NumPy · FFmpeg")
+    if tl.get("voice_credit"):
+        ev.append(f"Dialogue: 2,{ts(o0 + 1.5)},{ts(tl['duration'])},Sub,,0,0,0,,"
+                  f"{{\\pos({W // 2},400)\\fad(1000,800)}}Balss: {tl['voice_credit']}")
     path.write_text(head + "\n".join(ev) + "\n", encoding="utf-8")
 
 

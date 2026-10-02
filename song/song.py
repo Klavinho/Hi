@@ -18,6 +18,8 @@ BEAT = 60 / BPM
 EIGHTH = BEAT / 2
 BAR = 4 * BEAT
 TAIL = 2.5  # sekundes reverberācijas astei pēc pēdējā takta
+VOCAL_DB = -15.0  # vokāla skaļums (RMS dziedātajās vietās), dBFS
+VOCAL_GAIN = 1.0
 
 BUILD = Path(__file__).resolve().parent / "build"
 rng = np.random.default_rng(2026)
@@ -253,6 +255,44 @@ def sidechain(stereo, kicks, depth=0.55, release=0.16):
 
 # --- Aranžējums ------------------------------------------------------------
 
+def melody_lines():
+    """Katra dziedātā rinda ar tās nošu laikiem dziesmā (sekundēs)."""
+    out, t0 = [], 0.0
+    for sid, _, chords in SECTIONS:
+        for li, (text, melody) in enumerate(LYRICS.get(sid, [])):
+            notes = [(n.split(":")[0], int(n.split(":")[1])) for n in melody.split()]
+            syl = syllables(text)
+            assert len(syl) == len(notes), f"{sid}: '{text}' {len(syl)} zilbes, {len(notes)} notis"
+            assert sum(d for _, d in notes) <= 16, f"{sid}: '{text}' par garu"
+            tl = t0 + li * 2 * BAR
+            pos, events = 0, []
+            for (name, d), v in zip(notes, syl):
+                events.append({"midi": note_midi(name), "len": d, "vowel": v[0].translate(PLAIN),
+                               "start": tl + pos * EIGHTH, "end": tl + (pos + d) * EIGHTH})
+                pos += d
+            out.append({"section": sid, "text": text, "start": tl, "end": tl + 2 * BAR,
+                        "notes": events})
+        t0 += len(chords) * BAR
+    return out
+
+
+def load_vocals():
+    """build/vocals.wav no vocals.py (mono), ja tāds ir."""
+    path = BUILD / "vocals.wav"
+    if not path.exists():
+        return None, None
+    with wave.open(str(path)) as w:
+        assert w.getframerate() == SR and w.getnchannels() == 1
+        v = np.frombuffer(w.readframes(w.getnframes()), "<i2") / 32768.0
+    # skaļuma normalizācija pēc dziedātajām vietām (neatkarīgi no balss avota)
+    env = np.sqrt(np.convolve(v ** 2, np.ones(2205) / 2205, mode="same"))
+    sung = env > 0.1 * env.max()
+    v = v * 10 ** (VOCAL_DB / 20) / np.sqrt(np.mean(v[sung] ** 2))
+    meta = BUILD / "vocals.json"
+    credit = json.loads(meta.read_text())["credit"] if meta.exists() else None
+    return v, credit
+
+
 def build():
     bars = [(sid, label, ch) for sid, label, chords in SECTIONS for ch in chords]
     total = len(bars) * BAR
@@ -352,48 +392,43 @@ def build():
                     mix.add("arp", tb + s * BEAT / 4, sig, gain, pan)
                     mix.add("send", tb + s * BEAT / 4, sig, gain * 0.25, -pan)
 
-        # Melodija un teksts
-        for li, (text, melody) in enumerate(LYRICS.get(sid, [])):
-            notes = [(n.split(":")[0], int(n.split(":")[1])) for n in melody.split()]
-            syl = syllables(text)
-            assert len(syl) == len(notes), f"{sid}: '{text}' {len(syl)} zilbes, {len(notes)} notis"
-            assert sum(d for _, d in notes) <= 16, f"{sid}: '{text}' par garu"
-            tl = t0 + li * 2 * BAR
-            pos = 0
-            note_times = []
-            for (name, d), v in zip(notes, syl):
-                vowel = v[0].translate(PLAIN)
-                start = tl + pos * EIGHTH
-                dur = d * EIGHTH * (0.92 if d == 1 else 0.97)
-                sig = tone(hz(note_midi(name)), dur, vowel_weight(vowel),
-                           (0.02, 0.3, 0.8, 0.06), detune_cents=(-4, 4),
-                           vibrato=0.35 if d >= 2 else 0.0, fmax=5000)
-                lead_gain = 0.10
-                mix.add("lead", start, sig, lead_gain, -0.05)
-                mix.add("send", start, sig, lead_gain * 0.35)
-                # aizture (punktēta astotdaļa)
-                for k, g in ((1, 0.25), (2, 0.12)):
-                    mix.add("lead", start + k * 0.75 * BEAT, sig, lead_gain * g, (-0.6, 0.6)[k % 2])
-                if sid == "chorus3":  # pēdējā piedziedājumā oktāva augstāk
-                    sig2 = tone(hz(note_midi(name) + 12), dur, vowel_weight(vowel),
-                                (0.02, 0.3, 0.8, 0.06), vibrato=0.25 if d >= 2 else 0.0, fmax=6000)
-                    mix.add("lead", start, sig2, lead_gain * 0.35, 0.2)
-                note_times.append((start, start + d * EIGHTH))
-                pos += d
-            # vārdu laiki karaoke subtitriem
-            words, si = [], 0
-            for w in text.split():
-                n = len(syllables(w))
-                if n == 0:  # piem., domuzīme — pievieno iepriekšējam vārdam
-                    words[-1]["text"] += " " + w
-                    continue
-                words.append({"text": w, "start": note_times[si][0],
-                              "end": note_times[si + n - 1][1]})
-                si += n
-            lines.append({"section": sid, "text": text, "start": tl,
-                          "end": tl + 2 * BAR, "words": words})
-
         t0 += len(chords) * BAR
+
+    # Melodija (sintezators) un vokāls
+    vocals, credit = load_vocals()
+    lead_gain = 0.10 if vocals is None else 0.025  # ar vokālu sintezators paliek klusi fonā
+    for ln in melody_lines():
+        for nt in ln["notes"]:
+            d, start = nt["len"], nt["start"]
+            dur = d * EIGHTH * (0.92 if d == 1 else 0.97)
+            sig = tone(hz(nt["midi"]), dur, vowel_weight(nt["vowel"]),
+                       (0.02, 0.3, 0.8, 0.06), detune_cents=(-4, 4),
+                       vibrato=0.35 if d >= 2 else 0.0, fmax=5000)
+            mix.add("lead", start, sig, lead_gain, -0.05)
+            mix.add("send", start, sig, lead_gain * 0.35)
+            # aizture (punktēta astotdaļa)
+            for k, g in ((1, 0.25), (2, 0.12)):
+                mix.add("lead", start + k * 0.75 * BEAT, sig, lead_gain * g, (-0.6, 0.6)[k % 2])
+            if ln["section"] == "chorus3":  # pēdējā piedziedājumā oktāva augstāk
+                sig2 = tone(hz(nt["midi"] + 12), dur, vowel_weight(nt["vowel"]),
+                            (0.02, 0.3, 0.8, 0.06), vibrato=0.25 if d >= 2 else 0.0, fmax=6000)
+                mix.add("lead", start, sig2, lead_gain * 0.35, 0.2)
+        # vārdu laiki karaoke subtitriem
+        words, si = [], 0
+        for w in ln["text"].split():
+            n = len(syllables(w))
+            if n == 0:  # piem., domuzīme — pievieno iepriekšējam vārdam
+                words[-1]["text"] += " " + w
+                continue
+            words.append({"text": w, "start": ln["notes"][si]["start"],
+                          "end": ln["notes"][si + n - 1]["end"]})
+            si += n
+        lines.append({k: ln[k] for k in ("section", "text", "start", "end")} | {"words": words})
+    if vocals is not None:
+        mix.add("vocal", 0.0, vocals, VOCAL_GAIN)
+        mix.add("send", 0.0, vocals, VOCAL_GAIN * 0.30)
+        for k, g in ((1, 0.20), (2, 0.09)):
+            mix.add("vocal", k * 0.75 * BEAT, vocals, VOCAL_GAIN * g, (-0.6, 0.6)[k % 2])
 
     # --- Miksēšana un masterings ---
     chorus_kicks = [k for k in kicks
@@ -402,7 +437,8 @@ def build():
     bass = sidechain(mix.bus("bass"), chorus_kicks, depth=0.45)
     arp = sidechain(mix.bus("arp"), chorus_kicks, depth=0.35)
     wet = reverb(mix.bus("send") + 0.35 * pad + 0.2 * mix.bus("lead"))
-    master = mix.bus("drums") + bass + pad + arp + mix.bus("lead") + 0.30 * wet
+    master = (mix.bus("drums") + bass + pad + arp + mix.bus("lead") + mix.bus("vocal")
+              + 0.30 * wet)
     master /= np.max(np.abs(master))
     master = np.tanh(1.6 * master) / np.tanh(1.6)  # maigs piesātinājums
     master *= 10 ** (-1 / 20) / np.max(np.abs(master))
@@ -418,9 +454,11 @@ def build():
         w.writeframes(pcm.tobytes())
 
     timeline = {"bpm": BPM, "duration": master.shape[1] / SR, "song_end": total,
-                "kicks": sorted(kicks), "sections": sections, "lines": lines}
+                "kicks": sorted(kicks), "sections": sections, "lines": lines,
+                "voice_credit": credit}
     (BUILD / "timeline.json").write_text(json.dumps(timeline, ensure_ascii=False, indent=1))
-    print(f"song.wav: {master.shape[1] / SR:.1f} s, {len(lines)} teksta rindas")
+    print(f"song.wav: {master.shape[1] / SR:.1f} s, {len(lines)} teksta rindas"
+          + (f", vokāls: {credit}" if vocals is not None else ""))
 
 
 if __name__ == "__main__":
