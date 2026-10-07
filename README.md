@@ -22,4 +22,11 @@ Atver `index.html` pārlūkā (vajadzīgs internets, lai ielādētu Three.js un 
 - **Kustīgi bloki**, kas slīd no malas uz malu.
 - Līkumos bumbiņu nes uz ārpusi, tāpēc jāpiestūrē.
 
+## Bumbas dizains
+
+Sākuma ekrānā un pēc spēles beigām var izvēlēties bumbu (izvēle saglabājas pārlūkā):
+Kobalts, Trionda stils (2026. gada Pasaules kausa bumbas motīvi: balti paneļi ar sarkanu, zaļu un zilu vilni, kas satiekas zeltā apvilktā trijstūrī), Klasiskais futbols, Basketbols, Latvija, Zeme, Disko un Pludmale.
+
+## Grūtība
+
 Jo tālāk aizripo, jo trase kļūst šaurāka, līkumaināka un ātrāka, un šķēršļi parādās biežāk. Trasē ik pēc 100 m ir uzkrāsoti attāluma skaitļi, bet tavā rekorda vietā virs trases karājas banneris. Rekords tiek saglabāts pārlūkā.

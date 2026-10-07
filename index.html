@@ -211,6 +211,29 @@ kbd, .chip {
 .foot strong { font: 700 13px/1.5 var(--f-data); color: var(--ivory); }
 .gl-error { margin: 0; padding: 12px 14px; border-radius: 12px; background: rgba(255, 91, 71, 0.16); color: var(--ivory); font-size: 14px; }
 
+.skins { display: grid; gap: 10px; }
+.skins-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.skins-label { font: 700 10px/1 var(--f-body); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.skins-name { font: 700 13px/1.2 var(--f-display); color: var(--ivory); text-align: right; }
+.skins-row { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+.skin {
+  appearance: none;
+  width: 100%;
+  max-width: 60px;
+  aspect-ratio: 1;
+  justify-self: center;
+  padding: 3px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: rgba(247, 241, 229, 0.06);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+.skin canvas { display: block; width: 100%; height: 100%; }
+.skin:hover { transform: translateY(-2px); }
+.skin[aria-checked="true"] { border-color: var(--haze); background: rgba(242, 182, 140, 0.16); }
+.skin:focus-visible { outline: 3px solid var(--ivory); outline-offset: 2px; }
+
 .final {
   margin: 0;
   font: 700 clamp(58px, 19vw, 92px)/0.95 var(--f-data);
@@ -235,12 +258,15 @@ kbd, .chip {
 body:not(.touch) .only-touch { display: none; }
 body.touch .only-keys { display: none; }
 
+@media (max-width: 440px) {
+  .skins-row { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+}
 @media (max-width: 380px) {
   .card { padding: 22px 18px 20px; gap: 16px; }
   .controls div { grid-template-columns: minmax(0, 8em) minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .toast, .primary { transition: none; }
+  .toast, .primary, .skin { transition: none; }
 }
 </style>
 </head>
@@ -285,6 +311,10 @@ body.touch .only-keys { display: none; }
       <div><dt><span class="chip">Turi pusi</span></dt><dd>Stūrēt pa kreisi vai pa labi</dd></div>
       <div><dt><span class="chip">Pavelc ↑</span></dt><dd>Lēkt pāri barjerām un bedrēm</dd></div>
     </dl>
+    <div class="skins">
+      <div class="skins-head"><span class="skins-label" id="skinLabelStart">Bumba</span><span class="skins-name" data-skin-name>Kobalts</span></div>
+      <div class="skins-row" role="radiogroup" aria-labelledby="skinLabelStart"></div>
+    </div>
     <button class="primary" id="startBtn" type="button"><span>Sākt ripot</span><kbd class="only-keys">Enter</kbd></button>
     <p class="gl-error" id="glError" hidden>Šis pārlūks neļauj zīmēt 3D grafiku (WebGL), tāpēc trasi nevar parādīt. Pamēģini citā pārlūkā vai ieslēdz aparatūras paātrinājumu.</p>
     <p class="foot"><span>Tavs rekords</span><strong id="startBest">0 m</strong></p>
@@ -309,6 +339,10 @@ body.touch .only-keys { display: none; }
       <div><dt>Rekords</dt><dd id="overBest">0 m</dd></div>
       <div><dt>Maks. ātrums</dt><dd id="overSpeed">0 km/h</dd></div>
     </dl>
+    <div class="skins">
+      <div class="skins-head"><span class="skins-label" id="skinLabelOver">Bumba</span><span class="skins-name" data-skin-name>Kobalts</span></div>
+      <div class="skins-row" role="radiogroup" aria-labelledby="skinLabelOver"></div>
+    </div>
     <button class="primary" id="restartBtn" type="button"><span>Ripot vēlreiz</span><kbd class="only-keys">Enter</kbd></button>
   </div>
 </section>
@@ -609,19 +643,272 @@ body.touch .only-keys { display: none; }
     return tex;
   }
 
-  // The ball: cobalt with an ivory equator and meridian so the roll is visible
-  const ballTex = canvasTexture(512, 256, (g, w, h) => {
-    g.fillStyle = '#3150e8'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#f7f1e5';
-    g.fillRect(0, h / 2 - 15, w, 30);
-    g.fillRect(w * 0.25 - 12, 0, 24, h);
-    g.fillRect(w * 0.75 - 12, 0, 24, h);
-  });
-  const ballMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(BALL_R, 36, 22),
-    new THREE.MeshPhongMaterial({ map: ballTex, shininess: 70, specular: 0x6a6690 })
-  );
+  // ---------- Ball skins ----------
+  // Each skin maps a unit direction on the sphere to a colour. The same function paints the
+  // equirectangular ball texture and the little shaded previews in the picker.
+  const rgb = (hex) => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
+  const put = (o, c) => { o[0] = c[0]; o[1] = c[1]; o[2] = c[2]; };
+  const putMix = (o, a, b, t) => { for (let i = 0; i < 3; i++) o[i] = a[i] + (b[i] - a[i]) * t; };
+
+  function hash3(x, y, z) {
+    let h = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^ Math.imul(z | 0, 0x9e3779b1);
+    h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+    h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
+  function vnoise(x, y, z) {
+    const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z);
+    let fx = x - ix, fy = y - iy, fz = z - iz;
+    fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy); fz = fz * fz * (3 - 2 * fz);
+    const c = (dx, dy, dz) => hash3(ix + dx, iy + dy, iz + dz);
+    const x00 = lerp(c(0, 0, 0), c(1, 0, 0), fx), x10 = lerp(c(0, 1, 0), c(1, 1, 0), fx);
+    const x01 = lerp(c(0, 0, 1), c(1, 0, 1), fx), x11 = lerp(c(0, 1, 1), c(1, 1, 1), fx);
+    return lerp(lerp(x00, x10, fy), lerp(x01, x11, fy), fz);
+  }
+  function fbm(x, y, z) {
+    let amp = 0.5, f = 1, sum = 0, norm = 0;
+    for (let i = 0; i < 5; i++) { sum += amp * vnoise(x * f, y * f, z * f); norm += amp; amp *= 0.5; f *= 2.03; }
+    return sum / norm;
+  }
+
+  // Trionda style: four panels; red, green and blue waves meet in a gold-rimmed triangle on each panel
+  const TRI = {
+    white: rgb(0xf6f6f2), gold: rgb(0xc9a23c), seam: rgb(0xc3c6cf),
+    waves: [rgb(0xd62839), rgb(0x0b8f55), rgb(0x2547a8)],
+    centers: []
+  };
+  for (const v of [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]]) {
+    const c = new V3(v[0], v[1], v[2]).normalize();
+    const e1 = new V3().crossVectors(Math.abs(c.y) < 0.9 ? new V3(0, 1, 0) : new V3(1, 0, 0), c).normalize();
+    const e2 = new V3().crossVectors(c, e1);
+    TRI.centers.push({ c, e1, e2 });
+  }
+  const TRI_EDGES = [0, 1, 2].map((k) => Math.PI / 3 + (k * 2 * Math.PI) / 3).map((a) => [Math.cos(a), Math.sin(a)]);
+
+  // Classic football: the exact projection of a truncated icosahedron (12 pentagons, 20 hexagons)
+  const FOOT = { black: rgb(0x1b1b20), white: rgb(0xf4f3ef), seam: rgb(0x8d8c93), faces: [] };
+  (function () {
+    const P = (1 + Math.sqrt(5)) / 2;
+    const ico = [];
+    for (const a of [-1, 1]) for (const b of [-1, 1]) ico.push([0, a, b * P], [a, b * P, 0], [b * P, 0, a]);
+    const add = (x, y, z, pent) => {
+      const l = Math.hypot(x, y, z);
+      FOOT.faces.push({ x: x / l, y: y / l, z: z / l, w: pent ? 1 / 2.3274 : 1 / 2.2673, pent }); // 1 / face plane distance
+    };
+    for (const v of ico) add(v[0], v[1], v[2], true);
+    const near = (a, b) => Math.abs(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) - 2) < 1e-6;
+    for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) for (let k = j + 1; k < 12; k++) {
+      const a = ico[i], b = ico[j], c = ico[k];
+      if (near(a, b) && near(b, c) && near(a, c)) add(a[0] + b[0] + c[0], a[1] + b[1] + c[1], a[2] + b[2] + c[2], false);
+    }
+  })();
+
+  const BASKET = { skin: rgb(0xd8641f), line: rgb(0x1d1510) };
+  const EARTH = { deep: rgb(0x173f78), shallow: rgb(0x3a86c4), grass: rgb(0x4d8a3a), forest: rgb(0x2f6a33), sand: rgb(0xc8a86a), ice: rgb(0xf3f6f8) };
+  const DISCO = { grout: rgb(0x26262f), tints: [rgb(0xf2f2f6), rgb(0xf2b68c), rgb(0xb9b0e6), rgb(0xdfe6f0)] };
+  const BEACH = [rgb(0xe63946), rgb(0xf7f3ea), rgb(0x2563eb), rgb(0xf7f3ea), rgb(0xf5c518), rgb(0xf7f3ea)];
+  const COBALT = { blue: rgb(0x3150e8), ivory: rgb(0xf7f1e5) };
+  const LATVIA = { carmine: rgb(0x9e3039), white: rgb(0xf6f2ea) };
+
+  const SKINS = [
+    {
+      id: 'kobalts', name: 'Kobalts', shininess: 70, specular: 0x6a6690,
+      sample(x, y, z, o) { put(o, Math.abs(y) < 0.17 || Math.abs(x) < 0.12 ? COBALT.ivory : COBALT.blue); }
+    },
+    {
+      id: 'trionda', name: 'Trionda stils', shininess: 60, specular: 0x8a8578,
+      sample(x, y, z, o) {
+        let best = -2, second = -2, bi = 0;
+        for (let i = 0; i < 4; i++) {
+          const c = TRI.centers[i].c, d = x * c.x + y * c.y + z * c.z;
+          if (d > best) { second = best; best = d; bi = i; } else if (d > second) second = d;
+        }
+        if (best - second < 0.01) return put(o, TRI.seam);           // panel seams
+        const { e1, e2 } = TRI.centers[bi];
+        const px = x * e1.x + y * e1.y + z * e1.z, py = x * e2.x + y * e2.y + z * e2.z;
+        const gx = px / best, gy = py / best;                        // flat coordinates around the panel centre
+        let m = -Infinity;
+        for (const n of TRI_EDGES) m = Math.max(m, gx * n[0] + gy * n[1]);
+        if (m < 0.125) return put(o, TRI.white);                      // the triangle where the three waves meet
+        if (m < 0.15) return put(o, TRI.gold);
+        const r = Math.acos(Math.min(1, best)), a = Math.atan2(py, px);
+        const t = (r - 0.2) / 1.1;
+        if (t >= 0 && t < 1) {
+          const w = 0.33 * Math.pow(1 - t, 1.1), sr = Math.sin(r);
+          for (let k = 0; k < 3; k++) {
+            let da = a - ((k * 2 * Math.PI) / 3 + 1.6 * (r - 0.2));
+            da -= Math.round(da / (2 * Math.PI)) * 2 * Math.PI;
+            const dist = da * sr;
+            if (Math.abs(dist) < w) return put(o, dist > w - 0.03 ? TRI.gold : TRI.waves[k]);
+          }
+        }
+        put(o, TRI.white);
+      }
+    },
+    {
+      id: 'klasika', name: 'Klasiskais futbols', shininess: 45, specular: 0x55555a,
+      sample(x, y, z, o) {
+        let best = -2, second = -2, bf = null;
+        for (const f of FOOT.faces) {
+          const s = (x * f.x + y * f.y + z * f.z) * f.w;
+          if (s > best) { second = best; best = s; bf = f; } else if (s > second) second = s;
+        }
+        put(o, best - second < 0.004 ? FOOT.seam : bf.pent ? FOOT.black : FOOT.white);
+      }
+    },
+    {
+      id: 'basketbols', name: 'Basketbols', shininess: 14, specular: 0x2a2018,
+      sample(x, y, z, o) {
+        const w = 0.02;
+        if (Math.abs(y) < w || Math.abs(z) < w || Math.abs(Math.abs(x) - 0.72) < w * 0.9) return put(o, BASKET.line);
+        const k = 0.9 + hash3(Math.floor(x * 110), Math.floor(y * 110), Math.floor(z * 110)) * 0.14;   // pebbled leather
+        for (let i = 0; i < 3; i++) o[i] = Math.min(255, BASKET.skin[i] * k);
+      }
+    },
+    {
+      id: 'latvija', name: 'Latvija', shininess: 50, specular: 0x6a5a5a,
+      sample(x, y, z, o) { put(o, Math.abs(y) < 0.2 ? LATVIA.white : LATVIA.carmine); }   // 2 : 1 : 2 like the flag
+    },
+    {
+      id: 'zeme', name: 'Zeme', size: 512, shininess: 35, specular: 0x334455,
+      sample(x, y, z, o) {
+        const n = fbm(x * 1.7 + 11.3, y * 1.7 + 4.1, z * 1.7 - 7.7);
+        const lat = Math.abs(y);
+        if (lat > 0.97 - n * 0.1) return put(o, EARTH.ice);
+        if (n < 0.53) return putMix(o, EARTH.deep, EARTH.shallow, Math.pow(n / 0.53, 6));
+        const dry = vnoise(x * 3 + 40, y * 3, z * 3);
+        if (dry > 0.62 && lat < 0.55) return putMix(o, EARTH.grass, EARTH.sand, Math.min(1, (dry - 0.62) * 6));
+        putMix(o, EARTH.grass, EARTH.forest, Math.min(1, (n - 0.53) * 6));
+      }
+    },
+    {
+      id: 'disko', name: 'Disko', shininess: 140, specular: 0xffffff,
+      sample(x, y, z, o) {
+        const rows = 26;
+        const fr = ((Math.asin(clamp(y, -1, 1)) + Math.PI / 2) / Math.PI) * rows;
+        const row = Math.floor(fr), fy = fr - row;
+        const n = Math.max(3, Math.round(52 * Math.cos(((row + 0.5) / rows) * Math.PI - Math.PI / 2)));
+        const fc = ((Math.atan2(z, x) + Math.PI) / (2 * Math.PI)) * n;
+        const col = Math.floor(fc), fx = fc - col;
+        if (fy < 0.1 || fx < 0.1) return put(o, DISCO.grout);
+        const tint = DISCO.tints[Math.floor(hash3(row, col, 3) * DISCO.tints.length)];
+        const k = 0.55 + hash3(row, col, 9) * 0.45;
+        for (let i = 0; i < 3; i++) o[i] = tint[i] * k;
+      }
+    },
+    {
+      id: 'pludmale', name: 'Pludmale', shininess: 90, specular: 0x9a9a9a,
+      sample(x, y, z, o) {
+        if (Math.abs(y) > 0.9) return put(o, BEACH[1]);
+        put(o, BEACH[Math.floor(((Math.atan2(z, x) + Math.PI) / (2 * Math.PI)) * 6) % 6]);
+      }
+    }
+  ];
+  const skinById = (id) => SKINS.find((s) => s.id === id) || SKINS[0];
+
+  const skinTextures = new Map();
+  function skinTexture(skin) {
+    if (skinTextures.has(skin.id)) return skinTextures.get(skin.id);
+    const W = skin.size || 1024, H = W / 2;
+    const tex = canvasTexture(W, H, (g) => {
+      const img = g.createImageData(W, H), d = img.data, o = [0, 0, 0];
+      for (let py = 0; py < H; py++) {
+        const th = ((py + 0.5) / H) * Math.PI, st = Math.sin(th), y = Math.cos(th);
+        for (let px = 0; px < W; px++) {
+          const ph = ((px + 0.5) / W) * Math.PI * 2;
+          skin.sample(-Math.cos(ph) * st, y, Math.sin(ph) * st, o);   // matches THREE.SphereGeometry's UV layout
+          const i = (py * W + px) * 4;
+          d[i] = o[0]; d[i + 1] = o[1]; d[i + 2] = o[2]; d[i + 3] = 255;
+        }
+      }
+      g.putImageData(img, 0, 0);
+    });
+    skinTextures.set(skin.id, tex);
+    return tex;
+  }
+
+  // Shaded, slightly tilted preview of a skin for the picker (2×2 supersampled)
+  const previews = new Map();
+  function skinPreview(skin) {
+    if (previews.has(skin.id)) return previews.get(skin.id);
+    const S = 96, c = document.createElement('canvas');
+    c.width = c.height = S;
+    const g = c.getContext('2d'), img = g.createImageData(S, S), d = img.data, o = [0, 0, 0];
+    const L = new V3(-0.45, 0.6, 0.66).normalize(), Hv = new V3(L.x, L.y, L.z + 1).normalize();
+    const ca = Math.cos(-0.5), sa = Math.sin(-0.5), cb = Math.cos(0.65), sb = Math.sin(0.65);
+    const specK = skin.shininess > 100 ? 0.9 : 0.45;
+    for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
+      let r = 0, gg = 0, b = 0, cov = 0;
+      for (let sy = 0; sy < 2; sy++) for (let sx = 0; sx < 2; sx++) {
+        const nx = ((px + 0.25 + sx * 0.5) / S) * 2 - 1, ny = 1 - ((py + 0.25 + sy * 0.5) / S) * 2;
+        const r2 = nx * nx + ny * ny;
+        if (r2 > 1) continue;
+        const nz = Math.sqrt(1 - r2);
+        const y1 = ny * ca - nz * sa, z1 = ny * sa + nz * ca;
+        skin.sample(nx * cb + z1 * sb, y1, -nx * sb + z1 * cb, o);
+        const lam = Math.max(0, nx * L.x + ny * L.y + nz * L.z);
+        const spec = Math.pow(Math.max(0, nx * Hv.x + ny * Hv.y + nz * Hv.z), skin.shininess * 0.6) * 255 * specK;
+        const k = 0.38 + 0.72 * lam;
+        r += o[0] * k + spec; gg += o[1] * k + spec; b += o[2] * k + spec; cov++;
+      }
+      const i = (py * S + px) * 4;
+      if (cov) { d[i] = r / cov; d[i + 1] = gg / cov; d[i + 2] = b / cov; }
+      d[i + 3] = (cov / 4) * 255;
+    }
+    g.putImageData(img, 0, 0);
+    previews.set(skin.id, c);
+    return c;
+  }
+
+  const ballMat = new THREE.MeshPhongMaterial({ shininess: 70, specular: 0x6a6690 });
+  const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 48, 28), ballMat);
   scene.add(ballMesh);
+  let currentSkin = skinById(store.get('ripo-lejup-ball', 'kobalts')).id;
+
+  function applySkin(id) {
+    const skin = skinById(id);
+    currentSkin = skin.id;
+    ballMat.map = skinTexture(skin);
+    ballMat.shininess = skin.shininess;
+    ballMat.specular.setHex(skin.specular);
+    ballMat.needsUpdate = true;
+    store.set('ripo-lejup-ball', skin.id);
+    for (const b of document.querySelectorAll('.skin')) {
+      const on = b.dataset.skin === skin.id;
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+    }
+    for (const el of document.querySelectorAll('[data-skin-name]')) el.textContent = skin.name;
+  }
+
+  function buildSkinPickers() {
+    for (const row of document.querySelectorAll('.skins-row')) {
+      for (const skin of SKINS) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'skin';
+        b.dataset.skin = skin.id;
+        b.title = skin.name;
+        b.setAttribute('role', 'radio');
+        b.setAttribute('aria-label', skin.name);
+        const c = document.createElement('canvas');
+        c.width = c.height = 96;
+        c.getContext('2d').drawImage(skinPreview(skin), 0, 0);
+        b.appendChild(c);
+        b.addEventListener('click', () => applySkin(skin.id));
+        row.appendChild(b);
+      }
+      row.addEventListener('keydown', (e) => {
+        const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+        if (!step) return;
+        e.preventDefault();
+        const i = SKINS.findIndex((s) => s.id === currentSkin);
+        const next = SKINS[(i + step + SKINS.length) % SKINS.length];
+        applySkin(next.id);
+        row.querySelector('[data-skin="' + next.id + '"]').focus();
+      });
+    }
+  }
 
   const shadowTex = canvasTexture(64, 64, (g) => {
     const grd = g.createRadialGradient(32, 32, 2, 32, 32, 32);
@@ -1392,6 +1679,10 @@ body.touch .only-keys { display: none; }
   const queueJump = () => { input.jumpBuffer = 0.14; };
 
   window.addEventListener('keydown', (e) => {
+    if (e.target && e.target.closest && e.target.closest('.skins')) {
+      if (e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); startRun(); }
+      return;
+    }
     const k = KEYS[e.code];
     if (k) { input[k] = true; e.preventDefault(); return; }
     if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
@@ -1447,6 +1738,8 @@ body.touch .only-keys { display: none; }
   // ---------- Boot ----------
   function boot(data) {
     if (data && data.best > best) { best = data.best; store.set('ripo-lejup-best', best); }
+    buildSkinPickers();
+    applySkin((data && data.skin) || currentSkin);
     ui.startBest.textContent = fmt(best) + ' m';
     ui.best.textContent = fmt(best);
     resetCourse();
@@ -1463,7 +1756,7 @@ body.touch .only-keys { display: none; }
   }
 
   const hot = window.claude && window.claude.hot;
-  if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ best }));
+  if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ best, skin: currentSkin }));
   if (hot && typeof hot.ready === 'function') hot.ready(boot);
   else boot((hot && hot.data) || {});
 
