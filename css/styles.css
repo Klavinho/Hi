@@ -608,7 +608,7 @@ mark {
   text-align: right;
 }
 .numfield input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
-.numfield .unit { font-family: var(--f-mono); font-variation-settings: "MONO" 1; font-size: 26px; font-weight: 700; color: var(--ink-2); }
+.numfield .nf-unit { font-family: var(--f-mono); font-variation-settings: "MONO" 1; font-size: 26px; font-weight: 700; color: var(--ink-2); }
 .numfield.is-ok input { border-color: var(--ok); background: var(--ok-soft); }
 .numfield.is-bad input { border-color: var(--bad); background: var(--bad-soft); animation: shake 0.35s; }
 
@@ -779,13 +779,58 @@ mark {
 .bil-l { flex: none; max-width: 70%; }
 .bil-dots { flex: 1; min-width: 10px; border-bottom: 2px dotted var(--rule-strong); transform: translateY(-4px); }
 .bil-total { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: auto; padding-top: 8px; font-weight: 800; }
-.bil-total .num { border-top: 1.5px solid var(--ink); border-bottom: 4px double var(--ink); padding: 2px 0 1px; }
+.bil-total .num { border-top: 1.5px solid var(--ink); border-bottom: 4px double var(--ink); padding: 2px 0 1px; min-width: 3.5em; text-align: right; }
 .bil-check { justify-self: center; display: inline-flex; gap: 8px; align-items: baseline; padding: 5px 12px; border-radius: 999px; font-weight: 700; font-size: 15px; }
 .bil-check.ok { background: var(--ok-soft); color: var(--ok); }
 .bil-check.bad { background: var(--bad-soft); color: var(--bad); }
 .bil-note { font-size: 14.5px; color: var(--ink-2); }
 .bil-empty { color: var(--ink-3); text-align: center; }
 .pnl { max-width: 460px; }
+.report { max-width: 520px; }
+.bil-total.sub { font-weight: 700; padding-top: 4px; margin-bottom: 4px; }
+.bil-total.sub .num { border-bottom: 0; }
+
+/* ---------- Bankas izraksts ---------- */
+.stmt { width: 100%; min-width: 440px; border-collapse: collapse; font-size: 15px; background: var(--sheet); }
+.stmt caption { text-align: left; font-family: var(--f-display); font-variation-settings: "CASL" 1; font-weight: 800; font-size: 17px; padding-bottom: 8px; }
+.stmt th { font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); text-align: left; padding: 8px 10px; border-bottom: 2px solid var(--ink); }
+.stmt th:last-child, .stmt td:last-child { text-align: right; white-space: nowrap; }
+.stmt td { padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: baseline; }
+.stmt td:first-child { color: var(--ink-3); white-space: nowrap; }
+.stmt .in { color: var(--ok); font-weight: 700; }
+.stmt .out { color: var(--ink); }
+.st-bal td { font-weight: 700; background: var(--sheet-2); }
+
+/* ---------- Kases čeks ---------- */
+.receipt {
+  justify-self: center;
+  width: min(100%, 300px);
+  margin: 0;
+  padding: 18px 20px 26px;
+  background: var(--paper);
+  font-family: var(--f-mono);
+  font-variation-settings: "MONO" 1, "CASL" 0;
+  font-size: 14.5px;
+  display: grid;
+  gap: 4px;
+  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 14px 100%;
+  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 14px 100%;
+}
+.rc-head { text-align: center; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1.5px dashed var(--rule-strong); }
+.rc-row { display: flex; justify-content: space-between; gap: 12px; }
+.rc-cut { border-top: 1.5px dashed var(--rule-strong); margin: 6px 0 4px; }
+.rc-total { font-weight: 800; font-size: 16px; margin-top: 4px; padding-top: 6px; border-top: 1.5px solid var(--ink); }
+.rc-foot { text-align: center; color: var(--ink-3); font-size: 12.5px; margin-top: 10px; }
+
+/* ---------- Cena un PVN ---------- */
+.split { display: grid; gap: 8px; }
+.split-bar { display: flex; min-height: 64px; border-radius: 14px; overflow: hidden; box-shadow: inset 0 0 0 1.5px var(--rule); }
+.split-bar > span { display: grid; align-content: center; gap: 2px; padding: 8px 12px; font-size: 13.5px; line-height: 1.25; }
+.split-net { background: var(--accent-soft); color: var(--ink); }
+.split-vat { flex: 1; min-width: 92px; background: var(--hi-soft); color: var(--ink); }
+.split-bar b { font-size: 16px; }
+.split-total { display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px; font-weight: 700; }
+.split-total .num { border-bottom: 4px double var(--ink); }
 .pnl .bil-side { gap: 3px; }
 
 /* ---------- Svari ---------- */
@@ -907,31 +952,45 @@ mark {
 
 /* ---------- Kontējums ---------- */
 .entry { display: grid; gap: 14px; }
-.jline { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: stretch; }
+.journal { display: grid; gap: 8px; }
+.jrow { --tone: var(--c-d); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.jrow-k { --tone: var(--c-k); padding-left: clamp(14px, 6vw, 40px); }
+.jside {
+  width: 32px; height: 32px;
+  border-radius: 9px;
+  display: grid; place-items: center;
+  background: var(--tone);
+  color: var(--sheet);
+  font-family: var(--f-mono);
+  font-variation-settings: "MONO" 1;
+  font-size: 15px;
+  font-weight: 800;
+}
 .slot {
-  --tone: var(--c-d);
-  display: grid; align-content: center; gap: 2px;
-  min-height: 68px;
-  padding: 10px 14px;
+  display: grid; align-content: center;
+  min-height: 54px;
+  padding: 8px 14px;
   border-radius: 14px;
   border: 2px dashed var(--rule-strong);
   background: var(--sheet);
   text-align: left;
   cursor: pointer;
 }
-.slot-k { --tone: var(--c-k); }
 .slot.filled { border-style: solid; border-color: var(--rule-strong); }
-.slot.active { border-style: solid; border-color: var(--tone); box-shadow: 0 0 0 4px var(--sheet-2), 0 0 0 6px var(--tone); }
-.slot-tag { font-family: var(--f-mono); font-variation-settings: "MONO" 1; font-size: 12.5px; font-weight: 800; letter-spacing: 0.04em; color: var(--tone); }
+.slot.active { border-style: solid; border-color: var(--tone); box-shadow: 0 0 0 3px var(--sheet), 0 0 0 5px var(--tone); }
 .slot-val { font-weight: 700; font-size: 16.5px; line-height: 1.25; }
 .slot-val.empty { color: var(--ink-3); font-weight: 500; }
 .slot.is-ok { border-style: solid; border-color: var(--ok); background: var(--ok-soft); box-shadow: none; }
 .slot.is-bad { border-style: solid; border-color: var(--bad); background: var(--bad-soft); box-shadow: none; animation: shake 0.35s; }
-.jamt { align-self: center; font-size: 22px; font-weight: 800; padding-inline: 6px; white-space: nowrap; }
-@media (max-width: 540px) {
-  .jline { grid-template-columns: 1fr 1fr; }
-  .jamt { grid-column: 1 / -1; grid-row: 1; justify-self: start; padding: 0; }
+.jamt { font-size: 19px; font-weight: 800; white-space: nowrap; min-width: 5.5em; text-align: right; }
+@media (max-width: 480px) {
+  .jamt { font-size: 16px; min-width: 0; }
+  .slot { padding-inline: 10px; }
 }
+.jbook { display: grid; gap: 14px; }
+.jentry { display: grid; gap: 8px; padding: 14px; border-radius: 16px; background: var(--sheet-2); box-shadow: inset 0 0 0 1.5px var(--rule); }
+.jentry-t { font-size: 14.5px; font-weight: 600; color: var(--ink-2); }
+.jacc { font-weight: 700; padding: 6px 0; border-bottom: 1.5px dotted var(--rule-strong); }
 .accts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 8px; }
 .acct {
   display: grid; gap: 3px;

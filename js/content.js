@@ -9,7 +9,8 @@
  *   scale   — svari: līdzsvaro pašu kapitālu ar slīdni
  *   effect  — darījuma ietekme uz bilances posteņiem (+ / 0 / −)
  *   quick   — ātrā kārta: virkne īsu jautājumu
- *   entry   — kontējums: izvēlies debeta un kredīta kontu
+ *   entry   — kontējums: izvēlies debeta un kredīta kontu (d, k, amount)
+ *             vai salikts ieraksts ar vairākām rindām (lines: [{s: 'd'|'k', a: konts, v: summa}])
  */
 (function () {
   'use strict';
@@ -28,6 +29,8 @@
     ien:    { name: 'Ieņēmumi no pārdošanas', type: 'I' },
     mat:    { name: 'Izejvielu izmaksas', type: 'E' },
     alga:   { name: 'Algu izmaksas', type: 'E' },
+    pvnA:   { name: 'Aprēķinātais PVN', type: 'S' },
+    priek:  { name: 'Priekšnodoklis', type: 'A', grp: 'AL' },
   };
 
   const units = [
@@ -35,8 +38,28 @@
     { id: 'u2', title: 'Darījumi un bilance', blurb: 'Kā katrs pirkums un maksājums pārvieto skaitļus.', lessons: ['l4', 'l5'] },
     { id: 'u3', title: 'Divkāršais ieraksts', blurb: 'Debets, kredīts un T-konti: grāmatveža galvenais instruments.', lessons: ['l6', 'l7', 'l8'] },
     { id: 'u4', title: 'Peļņa un principi', blurb: 'Kad nauda kļūst par ieņēmumiem un kāpēc grāmatvedis ir piesardzīgs.', lessons: ['l9', 'l10', 'l11'] },
-    { id: 'u5', title: 'Prakse', blurb: 'Viena mēneša grāmatvedība kafejnīcai no pirmā līdz pēdējam ierakstam.', lessons: ['l12'] },
+    { id: 'u5', title: 'Pievienotās vērtības nodoklis', blurb: 'Nodoklis, kas ir katrā čekā: kā to aprēķināt, iegrāmatot un kam to maksāt.', lessons: ['pvn1', 'pvn2'] },
+    { id: 'u6', title: 'Naudas plūsma', blurb: 'Kāpēc peļņa vēl nav nauda un kā izsekot katram eiro.', lessons: ['nauda1', 'nauda2'] },
+    { id: 'u7', title: 'Prakse', blurb: 'Viena mēneša grāmatvedība kafejnīcai no pirmā ieraksta līdz visiem trim pārskatiem.', lessons: ['l12'] },
   ];
+
+  // Kafejnīcas aprīlis: turpina simulācijas martu (naudas atlikums 9 300 €, piegādātājam parādā 500 €).
+  const APRIL_BANK = [
+    ['03.04.', 'SIA «Grauzdētava», rēķins Nr. 118 (marta parāds)', -500],
+    ['05.04.', 'Kafijas dzirnaviņas, jauna iekārta', -1200],
+    ['10.04.', 'Aizņēmuma atmaksa bankai', -400],
+    ['15.04.', 'Karšu maksājumi 1.–15.04.', 2400],
+    ['20.04.', 'SIA «Grauzdētava», rēķins Nr. 131', -1300],
+    ['30.04.', 'Telpu noma, aprīlis', -800],
+    ['30.04.', 'Alga baristam', -1500],
+    ['30.04.', 'Karšu maksājumi 16.–30.04.', 2800],
+  ];
+  const APRIL_CF = [
+    { t: 'Pamatdarbība', total: 'Pamatdarbības naudas plūsma', rows: [['Klientu maksājumi', 5200], ['Samaksāts piegādātājiem', -1800], ['Telpu noma', -800], ['Algas', -1500]] },
+    { t: 'Ieguldīšanas darbība', total: 'Ieguldīšanas darbības naudas plūsma', rows: [['Kafijas dzirnaviņas', -1200]] },
+    { t: 'Finansēšanas darbība', total: 'Finansēšanas darbības naudas plūsma', rows: [['Aizņēmuma atmaksa', -400]] },
+  ];
+  const PVN_ACCTS = ['banka', 'deb', 'pamatl', 'kraj', 'priek', 'ienp', 'pvnA', 'piegad'];
 
   const lessons = {};
 
@@ -876,25 +899,386 @@
   };
 
   /* =====================================================================
-   * 5. nodaļa — Prakse: kafejnīcas pirmais mēnesis
+   * 5. nodaļa — Pievienotās vērtības nodoklis
+   * ===================================================================== */
+
+  lessons.pvn1 = {
+    title: 'Kā darbojas PVN',
+    desc: 'Nodoklis, ko sedz pircējs, bet valstij nodod uzņēmums.',
+    takeaways: [
+      '**PVN** pievieno cenai. Pircējs to samaksā, uzņēmums to nodod valstij.',
+      'Latvijā standarta likme ir **21 %**.',
+      'No summas ar PVN nodokli aprēķina kā **summa × 21 ÷ 121**.',
+      'PVN maksātājam PVN nav ne ieņēmumi, ne izdevumi.',
+    ],
+    steps: [
+      {
+        type: 'info',
+        title: 'Nodoklis katrā čekā',
+        body: 'Klients kafejnīcā nopērk kapučīno. Uz čeka redzams, ka cenā jau ir iekļauts **pievienotās vērtības nodoklis (PVN)**.',
+        visual: V.receipt({ shop: 'Kafejnīca «Pupa»', items: [['Kapučīno', 3.63]], net: 3, vat: 0.63, rate: 21, foot: 'Paldies un uz tikšanos!' }),
+        after: 'Latvijā standarta PVN likme ir **21 %**. Dažām precēm un pakalpojumiem likums nosaka samazinātās likmes (12 % vai 5 %), bet daži darījumi ar PVN netiek aplikti. Likmes laika gaitā mainās, tāpēc aktuālās vērtības pārbaudi VID mājaslapā.',
+      },
+      {
+        type: 'choice',
+        prompt: 'Kam pieder šie 0,63 €?',
+        options: [
+          { t: 'Kafejnīcai: tie ir tās ieņēmumi', why: 'Kafejnīca šo naudu saņem, bet tā nav nopelnīta. Tā jānodod valstij.' },
+          { t: 'Valstij: kafejnīca tos tikai iekasē', ok: true },
+          { t: 'Klientam: viņš tos saņems atpakaļ', why: 'Gala patērētājs PVN atpakaļ nesaņem. Tieši viņš šo nodokli sedz.' },
+        ],
+        explain: 'Kafejnīca PVN iekasē valsts vārdā. Līdz brīdim, kad tā to samaksā VID, tās ir kafejnīcas **saistības** pret valsti.',
+      },
+      {
+        type: 'number',
+        prompt: 'Kafejnīca uzņēmumam piedāvā ēdināšanu par **500 € bez PVN**. Cik liels būs PVN rēķinā?',
+        answer: 105,
+        hint: 'Pareizini cenu bez PVN ar 21 % jeb 0,21.',
+        wrong: [
+          { v: 605, msg: 'Tā ir summa kopā ar PVN. Jautājums ir tikai par nodokli.' },
+          { v: 21, msg: '21 ir likme procentos. Aprēķini, cik eiro ir 21 % no 500 €.' },
+        ],
+        explain: '500 × 0,21 = 105 €. Rēķinā būs 500 € + 105 € PVN = 605 €.',
+      },
+      {
+        type: 'info',
+        title: 'Kad PVN jau ir cenā',
+        body: 'Bieži zināma ir tikai gala summa. Tad PVN nevar aprēķināt kā 21 % no tās: gala summā ir 100 % cenas **plus** 21 % nodokļa, kopā 121 %.',
+        visual: V.split(100, 21) + V.formula('PVN = summa ar PVN × 21 ÷ 121') + V.formula('Cena bez PVN = summa ar PVN ÷ 1,21'),
+      },
+      {
+        type: 'number',
+        prompt: 'Klients par banketu samaksā **1 210 €** (ar PVN 21 %). Cik no šīs summas ir PVN?',
+        answer: 210,
+        hint: 'Summa ar PVN ir 121 % no cenas. PVN ir 21 daļa no šīm 121.',
+        wrong: [{ v: 254.1, msg: 'Tie ir 21 % no 1 210 €. Bet 1 210 € jau ietver nodokli, tāpēc PVN ir 21/121 daļa, ne 21/100.' }],
+        explain: '1 210 × 21 ÷ 121 = 210 €. Cena bez PVN ir 1 000 €.',
+      },
+      {
+        type: 'number',
+        prompt: 'Martā kafejnīca pārdeva preces un pakalpojumus par **6 050 €** (ar PVN 21 %). Cik lieli ir marta ieņēmumi peļņas vai zaudējumu aprēķinā?',
+        answer: 5000,
+        hint: 'Ieņēmumos PVN neiekļauj.',
+        wrong: [
+          { v: 6050, msg: 'Ieņēmumos PVN neietver: tā daļa pieder valstij.' },
+          { v: 4779.5, msg: 'No summas ar PVN cenu iegūst, dalot ar 1,21. Atņemot 21 %, sanāk par maz.' },
+        ],
+        explain: '6 050 ÷ 1,21 = 5 000 €. Atlikušie 1 050 € ir PVN, kas jānodod valstij.',
+      },
+      {
+        type: 'choice',
+        prompt: 'Kafejnīca ir reģistrēta PVN maksātāja. Vai PVN samazina tās peļņu?',
+        options: [
+          { t: 'Jā, peļņa samazinās par 21 %', why: 'PVN neieraksta ne ieņēmumos, ne izdevumos, tāpēc peļņu tas neietekmē.' },
+          { t: 'Nē, PVN nav ne ieņēmumi, ne izdevumi', ok: true },
+        ],
+        explain: 'Iekasēto PVN kafejnīca nodod valstij, bet par iegādēm samaksāto PVN tā atgūst. Peļņu rēķina no summām bez PVN.',
+      },
+    ],
+  };
+
+  lessons.pvn2 = {
+    title: 'Priekšnodoklis un PVN grāmatojumi',
+    desc: 'Cik PVN jāsamaksā valstij un kā to iegrāmato.',
+    takeaways: [
+      '**Aprēķinātais PVN** ir no pārdošanas, **priekšnodoklis** ir no iegādēm.',
+      'Valstij maksā starpību: aprēķinātais PVN − priekšnodoklis.',
+      'Grāmatojumā PVN atdala no cenas: ieņēmumi un izmaksas ir bez PVN.',
+      'PVN nemaksātājs priekšnodokli atskaitīt nevar, tāpēc PVN kļūst par izmaksu daļu.',
+    ],
+    steps: [
+      {
+        type: 'info',
+        title: 'Katrs maksā tikai no savas pievienotās vērtības',
+        body: 'Kafija līdz klientam nonāk caur vairākiem uzņēmumiem. Katrs iekasē PVN no pircēja, bet atskaita PVN, ko pats samaksāja piegādātājam. Šo atskaitāmo PVN sauc par **priekšnodokli**.',
+        visual: V.flow([
+          { t: 'Grauzdētava', d: 'Pārdod pupiņas kafejnīcai: 100 € + **21 €** PVN. Valstij nodod **21 €**.' },
+          { t: 'Kafejnīca', d: 'Pārdod kafiju: 300 € + **63 €** PVN. Atskaita priekšnodokli 21 €. Valstij nodod **42 €**.' },
+          { t: 'Klients', d: 'Samaksā 363 €. PVN atgūt nevar, jo ir gala patērētājs.' },
+        ]),
+        after: 'Valsts kopā saņem 21 + 42 = 63 €, tieši 21 % no gala cenas. Kafejnīca nodokli maksā tikai no vērtības, ko tā pievienoja: 300 − 100 = 200 €.',
+      },
+      {
+        type: 'number',
+        prompt: 'Martā kafejnīcas aprēķinātais PVN no pārdošanas ir **1 050 €**. Par iepirktajām precēm tā samaksāja **420 €** PVN. Cik PVN jāsamaksā valstij par martu?',
+        answer: 630,
+        hint: 'Aprēķinātais PVN mīnus priekšnodoklis.',
+        wrong: [
+          { v: 1470, msg: 'Priekšnodokli no aprēķinātā PVN atņem, nevis pieskaita.' },
+          { v: 1050, msg: 'Kafejnīca drīkst atskaitīt priekšnodokli, ko pati samaksāja piegādātājiem.' },
+        ],
+        explain: '1 050 − 420 = 630 €. Šo summu norāda PVN deklarācijā, ko par katru taksācijas periodu iesniedz VID.',
+      },
+      {
+        type: 'choice',
+        prompt: 'Aprīlī kafejnīca nopērk jaunu aprīkojumu, un priekšnodoklis ir **1 500 €**. Aprēķinātais PVN ir **1 100 €**. Kas notiek?',
+        options: [
+          { t: 'Kafejnīca maksā valstij 2 600 €', why: 'Priekšnodokli neskaita klāt. To atņem no aprēķinātā PVN.' },
+          { t: 'Kafejnīca maksā valstij 1 100 €, priekšnodoklis zūd', why: 'Priekšnodoklis nezūd. Ja tas ir lielāks par aprēķināto PVN, rodas pārmaksa.' },
+          { t: 'Rodas PVN pārmaksa 400 €', ok: true },
+        ],
+        explain: '1 100 − 1 500 = −400 €. Tā ir kafejnīcas prasība pret valsti: pārmaksu var atgūt vai ieskaitīt turpmākajos nodokļu maksājumos.',
+      },
+      {
+        type: 'info',
+        title: 'PVN grāmatojumā',
+        body: 'Grāmatojot PVN atdala no cenas: ieņēmumus un iegādes uzskaita bez PVN. Nodoklis nonāk savos kontos. **Aprēķinātais PVN** ir parāds valstij (saistības), **priekšnodoklis** ir prasība pret valsti (aktīvs). Šādi ieraksti skar trīs kontus, bet debets joprojām ir vienāds ar kredītu.',
+        visual: V.journal([
+          { t: 'Pārdota ēdināšana par 1 210 € ar PVN', lines: [['d', 'Nauda bankā', 1210], ['k', 'Ieņēmumi no pakalpojumiem', 1000], ['k', 'Aprēķinātais PVN', 210]] },
+          { t: 'Nopirktas pupiņas par 605 € ar PVN', lines: [['d', 'Krājumi', 500], ['d', 'Priekšnodoklis', 105], ['k', 'Parādi piegādātājiem', 605]] },
+        ]),
+        after: 'Praksē abus bieži uzskaita vienā kontā «Norēķini ar budžetu par PVN»: aprēķināto PVN kredītā, priekšnodokli debetā.',
+      },
+      {
+        type: 'entry',
+        prompt: 'Kafejnīca izraksta rēķinu uzņēmumam par ēdināšanu: 2 000 € + PVN 420 €. Klients samaksās nākammēnes.',
+        accounts: PVN_ACCTS,
+        lines: [{ s: 'd', a: 'deb', v: 2420 }, { s: 'k', a: 'ienp', v: 2000 }, { s: 'k', a: 'pvnA', v: 420 }],
+        hint: 'Klients ir parādā visu summu ar PVN. Ieņēmumi ir bez PVN, bet nodoklis ir parāds valstij.',
+        explain: 'Pircēju parādi ↑ 2 420 € (D). Ieņēmumi ↑ 2 000 € (K). Aprēķinātais PVN ↑ 420 € (K). Debets 2 420 = kredīts 2 000 + 420.',
+      },
+      {
+        type: 'entry',
+        prompt: 'Kafejnīca nopērk piena putotāju par 363 € (t. sk. PVN 63 €) un samaksā no bankas konta. Putotājs kalpos vairākus gadus.',
+        accounts: PVN_ACCTS,
+        lines: [{ s: 'd', a: 'pamatl', v: 300 }, { s: 'd', a: 'priek', v: 63 }, { s: 'k', a: 'banka', v: 363 }],
+        hint: 'Pamatlīdzekli uzskaita bez PVN. Samaksāto PVN kafejnīca atgūs.',
+        explain: 'Pamatlīdzekļi ↑ 300 € (D). Priekšnodoklis ↑ 63 € (D). Nauda bankā ↓ 363 € (K).',
+      },
+      {
+        type: 'entry',
+        prompt: 'Mēneša beigās priekšnodokli 63 € ieskaita pret aprēķināto PVN.',
+        accounts: PVN_ACCTS,
+        d: 'pvnA', k: 'priek', amount: 63,
+        hint: 'Samazinās gan parāds valstij, gan prasība pret valsti.',
+        explain: 'Aprēķinātais PVN ↓ (D), priekšnodoklis ↓ (K). Valstij vēl jāsamaksā 420 − 63 = 357 €.',
+      },
+      {
+        type: 'choice',
+        prompt: 'Neliela kafejnīca nav PVN maksātāja, jo tās apgrozījums ir zem likumā noteiktā sliekšņa. Tā nopērk pupiņas par 605 € (t. sk. PVN 105 €). Kā tā uzskaita šos 105 €?',
+        options: [
+          { t: 'Kā priekšnodokli, ko atgūs no valsts', why: 'Priekšnodokli atskaitīt var tikai reģistrēts PVN maksātājs.' },
+          { t: 'Kā daļu no pupiņu izmaksām: krājumi ir 605 €', ok: true },
+          { t: 'Neuzskaita vispār', why: 'Nauda ir samaksāta, un tā jāuzskaita. Jautājums ir tikai par to, kur.' },
+        ],
+        explain: 'PVN nemaksātājam samaksātais PVN ir parasta izmaksu daļa, jo atgūt to nevar. Tāpēc uzņēmums PVN maksātāju reģistrā var reģistrēties arī brīvprātīgi, pirms sasniegts slieksnis.',
+      },
+    ],
+  };
+
+  /* =====================================================================
+   * 6. nodaļa — Naudas plūsma
+   * ===================================================================== */
+
+  lessons.nauda1 = {
+    title: 'Naudas plūsmas pārskats',
+    desc: 'No kurienes nauda nāk un kur tā aiziet.',
+    takeaways: [
+      'Peļņa un nauda nav viens un tas pats.',
+      'Naudas plūsmu iedala trijās daļās: **pamatdarbība**, **ieguldīšanas darbība** un **finansēšanas darbība**.',
+      'Sākuma atlikums + naudas izmaiņa = beigu atlikums, un tas sakrīt ar naudu bilancē.',
+      'Nolietojums naudas plūsmā neparādās: nauda aizgāja tad, kad aprīkojumu nopirka.',
+    ],
+    steps: [
+      {
+        type: 'info',
+        title: 'Peļņa nav nauda',
+        body: 'Aprīlī kafejnīca nopelnīja 2 000 € peļņu, bet naudas bankā mēneša laikā kļuva par 500 € mazāk. Kā tas iespējams?\n\nPeļņas vai zaudējumu aprēķins seko uzkrāšanas principam, bet rēķinus maksā ar naudu. Tāpēc ir trešais pārskats: **naudas plūsmas pārskats**. (Šajā nodaļā PVN vienkāršības labad neņemam vērā.)',
+        visual: V.cards([
+          { t: 'Bilance', d: 'Kas uzņēmumam ir un ko tas ir parādā **vienā datumā**.', tone: 'a' },
+          { t: 'Peļņas vai zaudējumu aprēķins', d: 'Cik uzņēmums **nopelnīja** periodā.', tone: 'pk' },
+          { t: 'Naudas plūsmas pārskats', d: 'Cik **naudas** ienāca un izgāja periodā.', tone: 's' },
+        ]),
+        after: 'Latvijā gada pārskatā naudas plūsmas pārskats obligāti jāsagatavo vidējām un lielām sabiedrībām. Vadībai tas noder jebkurā uzņēmumā.',
+      },
+      {
+        type: 'choice',
+        prompt: 'Vai uzņēmums, kas strādā ar peļņu, var nonākt maksātnespējā?',
+        options: [
+          { t: 'Nē, ja ir peļņa, naudas pietiek vienmēr', why: 'Peļņa var būt «iesaldēta» klientu parādos un krājumos, kamēr rēķini jāmaksā jau tagad.' },
+          { t: 'Jā, ja nauda ienāk lēnāk, nekā jāmaksā rēķini', ok: true },
+        ],
+        explain: 'Daudzi uzņēmumi nonāk grūtībās naudas trūkuma dēļ, lai gan tiem ir peļņa. Tāpēc naudas plūsmai seko atsevišķi.',
+      },
+      {
+        type: 'info',
+        title: 'Trīs naudas plūsmas',
+        body: 'Katru maksājumu naudas plūsmas pārskatā ieraksta vienā no trim daļām.',
+        visual: V.cards([
+          { t: 'Pamatdarbība', d: 'Ikdienas darbs: klientu maksājumi, algas, piegādātāji, noma, nodokļi.', tone: 'pk' },
+          { t: 'Ieguldīšanas darbība', d: 'Ilgtermiņa aktīvu pirkšana un pārdošana: iekārtas, ēkas, ieguldījumi citos uzņēmumos.', tone: 'a' },
+          { t: 'Finansēšanas darbība', d: 'Nauda no īpašniekiem un aizdevējiem un atpakaļ: pamatkapitāls, aizņēmumi, to atmaksa, dividendes.', tone: 's' },
+        ]),
+      },
+      {
+        type: 'sort',
+        prompt: 'Kurā naudas plūsmas daļā pieder katrs maksājums?',
+        buckets: [
+          { id: 'P', label: 'Pamatdarbība', tone: 'pk' },
+          { id: 'I', label: 'Ieguldīšana', tone: 'a' },
+          { id: 'F', label: 'Finansēšana', tone: 's' },
+        ],
+        items: [
+          { t: 'Klientu maksājumi par kafiju', b: 'P' },
+          { t: 'Nopirkts kafijas automāts', b: 'I' },
+          { t: 'Saņemts bankas aizņēmums', b: 'F' },
+          { t: 'Izmaksātas algas', b: 'P' },
+          { t: 'Pārdots vecais ledusskapis', b: 'I' },
+          { t: 'Īpašnieka iemaksa pamatkapitālā', b: 'F' },
+          { t: 'Samaksāts piegādātājam par pupiņām', b: 'P' },
+          { t: 'Izmaksātas dividendes', b: 'F' },
+          { t: 'Samaksāta telpu noma', b: 'P' },
+        ],
+        hint: 'Ikdienas darbs ir pamatdarbība. Ilgtermiņa aktīvi ir ieguldīšana. Nauda no īpašniekiem un bankas un atpakaļ ir finansēšana.',
+        explain: 'Automāts un ledusskapis ir ilgtermiņa aktīvi, tātad ieguldīšana. Aizņēmums, pamatkapitāls un dividendes ir finansēšana. Viss pārējais ir pamatdarbība.',
+      },
+      {
+        type: 'choice',
+        prompt: 'Kurš no šiem posteņiem naudas plūsmas pārskatā **neparādās**?',
+        options: [
+          { t: 'Algu izmaksa', why: 'Alga tiek samaksāta naudā, tā ir pamatdarbības naudas plūsma.' },
+          { t: 'Aizņēmuma atmaksa', why: 'Nauda aiziet uz banku, tā ir finansēšanas darbība.' },
+          { t: 'Kafijas automāta nolietojums', ok: true },
+          { t: 'Klientu maksājumi', why: 'Tā ir galvenā naudas ienākšana pamatdarbībā.' },
+        ],
+        explain: 'Nolietojums samazina peļņu, bet nauda par to nekur neaiziet. Nauda aizgāja tad, kad automātu nopirka, un tā bija ieguldīšanas darbība.',
+      },
+      {
+        type: 'number',
+        prompt: 'Aprēķini kafejnīcas aprīļa **pamatdarbības** naudas plūsmu.',
+        visual: V.statement({ title: 'Bankas konta izraksts · aprīlis', open: 9300, rows: APRIL_BANK }),
+        answer: 1100,
+        hint: 'Saskaiti klientu maksājumus un atņem piegādātājus, nomu un algu. Iekārta un aizņēmums šeit neietilpst.',
+        wrong: [{ v: -500, msg: 'Tā ir visa naudas izmaiņa. Dzirnaviņas ir ieguldīšanas darbība, aizņēmuma atmaksa ir finansēšanas darbība.' }],
+        explain: '2 400 + 2 800 − 500 − 1 300 − 800 − 1 500 = 1 100 €.',
+      },
+      {
+        type: 'number',
+        prompt: 'Cik naudas bankā ir aprīļa beigās?',
+        visual: V.cashflow({ title: 'Naudas plūsmas pārskats · aprīlis', open: 9300, hideChange: true, sections: APRIL_CF }),
+        answer: 8800,
+        hint: 'Saskaiti visu trīs daļu naudas plūsmas un rezultātu pieskaiti sākuma atlikumam.',
+        wrong: [{ v: 9800, msg: 'Naudas izmaiņa ir negatīva: 1 100 − 1 200 − 400 = −500 €. Tā jāatņem no sākuma atlikuma.' }],
+        explain: 'Naudas izmaiņa: 1 100 − 1 200 − 400 = −500 €. Beigu atlikums: 9 300 − 500 = 8 800 €. Tieši tik daudz naudas būs bilancē 30. aprīlī.',
+      },
+    ],
+  };
+
+  lessons.nauda2 = {
+    title: 'No peļņas līdz naudai',
+    desc: 'Netiešā metode: kāpēc peļņa atšķiras no naudas plūsmas.',
+    takeaways: [
+      '**Tiešā metode** saskaita maksājumus, **netiešā** sāk ar peļņu un to koriģē.',
+      'Nolietojumu pieskaita atpakaļ: tas samazināja peļņu, bet ne naudu.',
+      'Aktīvu, piemēram, pircēju parādu un krājumu, pieaugums naudu samazina.',
+      'Saistību, piemēram, parādu piegādātājiem, pieaugums naudu palielina.',
+    ],
+    steps: [
+      {
+        type: 'info',
+        title: 'Kur palika 900 €?',
+        body: 'Aprīlī kafejnīcas peļņa bija 2 000 €, bet pamatdarbība ienesa tikai 1 100 € naudas. Atšķirība rodas, jo peļņas vai zaudējumu aprēķins seko uzkrāšanas principam.',
+        visual: V.pnl({
+          title: 'Kafejnīca «Pupa», aprīlis',
+          I: [['Kafijas un kūku pārdošana', 5200], ['Ēdināšana uzņēmumam (vēl nav apmaksāta)', 600]],
+          E: [['Izejvielas', 1400], ['Algas', 1500], ['Telpu noma', 800], ['Automāta nolietojums', 100]],
+        }),
+        after: 'Pamatdarbības naudas plūsmu var aprēķināt divos veidos. **Tiešā metode** saskaita visus maksājumus, kā iepriekšējā nodarbībā. **Netiešā metode** sāk ar peļņu un izlabo to par visu, kas ietekmēja peļņu, bet ne naudu.',
+      },
+      {
+        type: 'choice',
+        prompt: 'Ēdināšana uzņēmumam par 600 € ir iekļauta peļņā, bet rēķins vēl nav apmaksāts. Kā tas ietekmē naudu salīdzinājumā ar peļņu?',
+        options: [
+          { t: 'Nauda ir par 600 € lielāka nekā peļņa', why: 'Nauda vēl nav saņemta, tāpēc tās nevar būt vairāk.' },
+          { t: 'Nauda ir par 600 € mazāka nekā peļņa', ok: true },
+          { t: 'Neietekmē', why: 'Ieņēmumi ir peļņā, bet nauda vēl nav bankā. Tieši tā ir atšķirība.' },
+        ],
+        explain: 'Ieņēmumi ir atzīti, tāpēc peļņa ir lielāka. Nauda vēl nav saņemta: pircēju parādi pieauga par 600 €.',
+      },
+      {
+        type: 'info',
+        title: 'Īkšķa likums',
+        body: 'Netiešajā metodē skatās, kā mainījās bilances posteņi, izņemot pašu naudu.',
+        visual: V.cards([
+          { t: 'Aktīvs ↑ → nauda −', d: 'Pircēju parādi vai krājumi pieauga: nauda «iesaldēta» tajos.', tone: 'a' },
+          { t: 'Aktīvs ↓ → nauda +', d: 'Klienti nomaksāja vecos parādus vai krājumi samazinājās.', tone: 'a' },
+          { t: 'Saistības ↑ → nauda +', d: 'Rēķini saņemti, bet vēl nav samaksāti.', tone: 's' },
+          { t: 'Saistības ↓ → nauda −', d: 'Samaksāti arī iepriekšējo mēnešu rēķini.', tone: 's' },
+        ]),
+        after: 'Un vēl: **nolietojumu** pieskaita atpakaļ, jo tas samazināja peļņu, bet naudu ne.',
+      },
+      {
+        type: 'quick',
+        prompt: 'Pieskaitīt peļņai vai atņemt no tās?',
+        options: ['Pieskaitīt', 'Atņemt'],
+        optTone: ['pk', 's'],
+        items: [
+          { t: 'Nolietojums 100 €', a: 0, why: 'Nolietojums samazināja peļņu, bet nauda neaizgāja.' },
+          { t: 'Pircēju parādi pieauga', a: 1, why: 'Ieņēmumi atzīti, bet nauda vēl nav saņemta.' },
+          { t: 'Parādi piegādātājiem pieauga', a: 0, why: 'Izmaksas atzītas, bet vēl nav samaksātas.' },
+          { t: 'Krājumi pieauga', a: 1, why: 'Nauda ieguldīta krājumos, kas vēl nav kļuvuši par izmaksām.' },
+          { t: 'Pircēju parādi samazinājās', a: 0, why: 'Klienti samaksāja par iepriekšējo periodu ieņēmumiem.' },
+          { t: 'Parādi piegādātājiem samazinājās', a: 1, why: 'Samaksāti arī veci rēķini, kas šī perioda peļņu neietekmēja.' },
+        ],
+      },
+      {
+        type: 'number',
+        prompt: 'Aprēķini aprīļa pamatdarbības naudas plūsmu ar netiešo metodi.',
+        visual: V.report({
+          title: 'Kafejnīca «Pupa», aprīlis',
+          rows: [
+            { l: 'Peļņa', v: 2000 },
+            { h: 'Korekcijas' },
+            { l: 'Nolietojums', v: 100 },
+            { l: 'Pircēju parādi pieauga par', v: 600 },
+            { l: 'Krājumi pieauga par', v: 200 },
+            { l: 'Parādi piegādātājiem samazinājās par', v: 200 },
+            { l: 'Pamatdarbības naudas plūsma', v: '?', total: 'grand' },
+          ],
+        }),
+        answer: 1100,
+        hint: 'Nolietojumu pieskaiti. Pārējām trim izmaiņām piemēro īkšķa likumu.',
+        wrong: [
+          { v: 3100, msg: 'Ne visas korekcijas pieskaita. Aktīvu pieaugums un saistību samazinājums naudu samazina.' },
+          { v: 900, msg: 'Nolietojums nav jāatņem: tas jau samazināja peļņu, bet naudu ne. To pieskaita atpakaļ.' },
+          { v: 1500, msg: 'Gan krājumu pieaugums, gan parādu piegādātājiem samazinājums naudu samazina.' },
+        ],
+        explain: '2 000 + 100 − 600 − 200 − 200 = 1 100 €. Tieši tikpat, cik ar tiešo metodi.',
+      },
+      {
+        type: 'choice',
+        prompt: 'Tiešā metode deva 1 100 €, netiešā arī 1 100 €. Ko tas parāda?',
+        options: [
+          { t: 'Peļņa vienmēr ir lielāka par naudas plūsmu', why: 'Ne vienmēr. Ja klienti nomaksā vecus parādus, naudas plūsma var būt lielāka par peļņu.' },
+          { t: 'Abas metodes mēra vienu un to pašu, tikai no dažādām pusēm', ok: true },
+          { t: 'Nolietojums ir naudas izdevums', why: 'Tieši otrādi: nolietojumu pieskaita atpakaļ, jo nauda par to neaizgāja.' },
+        ],
+        explain: 'Tiešā metode parāda, **kur** nauda ienāca un aizgāja. Netiešā parāda, **kāpēc** nauda atšķiras no peļņas. Rezultāts ir viens.',
+      },
+    ],
+  };
+
+  /* =====================================================================
+   * 7. nodaļa — Prakse: kafejnīcas pirmais mēnesis
    * ===================================================================== */
 
   lessons.l12 = {
     title: 'Kafejnīcas pirmais mēnesis',
-    desc: 'Iegrāmato 8 darījumus un sastādi bilanci.',
+    desc: 'Iegrāmato 8 darījumus un sastādi visus trīs pārskatus.',
     practice: false,
     ledger: ['banka', 'pamatl', 'kraj', 'pk', 'aizn', 'piegad', 'ien', 'mat', 'alga'],
     takeaways: [
       'Katrs darījums nonāk divos kontos ar vienādu summu.',
       'Ieņēmumi un izdevumi veido peļņu, un peļņa nonāk pašu kapitālā.',
       'Ja visi ieraksti ir pareizi, bilance sakrīt.',
+      'Naudas plūsmas pārskata beigu atlikums sakrīt ar naudu bilancē.',
     ],
     steps: [
       {
         type: 'info',
         kicker: 'Simulācija',
         title: 'Kafejnīcas grāmatvedība tavās rokās',
-        body: 'Kafejnīca «Pupa» sāk darbu 1. martā. Iegrāmato katru marta darījumu. Pēc katra ieraksta redzēsi, kā mainās konti un bilance.\n\nVienkāršības labad nodokļus šajā simulācijā neņemam vērā.',
+        body: 'Kafejnīca «Pupa» sāk darbu 1. martā. Iegrāmato katru marta darījumu. Pēc katra ieraksta redzēsi, kā mainās konti un bilance.\n\nVienkāršības labad nodokļus, arī PVN, šajā simulācijā neņemam vērā.',
         visual: V.cards([
           { t: 'Aktīvi', d: 'Nauda bankā · Pamatlīdzekļi · Krājumi', tone: 'a' },
           { t: 'Saistības', d: 'Aizņēmumi no bankas · Parādi piegādātājiem', tone: 's' },
@@ -905,19 +1289,19 @@
       {
         type: 'entry',
         prompt: '**1. marts.** Līga iemaksā kafejnīcas bankas kontā 8 000 € kā pamatkapitālu.',
-        amount: 8000, d: 'banka', k: 'pk',
+        amount: 8000, d: 'banka', k: 'pk', cf: 'F', memo: 'Pamatkapitāla iemaksa',
         explain: 'Nauda bankā (aktīvs) ↑ → debets. Pamatkapitāls (pašu kapitāls) ↑ → kredīts.',
       },
       {
         type: 'entry',
         prompt: '**2. marts.** Banka izsniedz kafejnīcai aizņēmumu 5 000 €.',
-        amount: 5000, d: 'banka', k: 'aizn',
+        amount: 5000, d: 'banka', k: 'aizn', cf: 'F', memo: 'Saņemts bankas aizņēmums',
         explain: 'Nauda ↑ → debets. Saistības pret banku ↑ → kredīts.',
       },
       {
         type: 'entry',
         prompt: '**3. marts.** Kafejnīca nopērk kafijas automātu par 6 000 € un samaksā no bankas konta.',
-        amount: 6000, d: 'pamatl', k: 'banka',
+        amount: 6000, d: 'pamatl', k: 'banka', cf: 'I', memo: 'Nopirkts kafijas automāts',
         explain: 'Pamatlīdzekļi ↑ → debets. Nauda ↓ → kredīts. Aktīvu kopsumma nemainās.',
       },
       {
@@ -937,7 +1321,7 @@
       {
         type: 'entry',
         prompt: '**Marta laikā.** Klienti par kafiju un kūkām ar kartēm samaksā kopā 4 500 €.',
-        amount: 4500, d: 'banka', k: 'ien',
+        amount: 4500, d: 'banka', k: 'ien', cf: 'P', memo: 'Klientu maksājumi',
         explain: 'Nauda ↑ → debets. Ieņēmumi ↑ → kredīts. Ieņēmumi palielina pašu kapitālu.',
       },
       {
@@ -950,13 +1334,13 @@
       {
         type: 'entry',
         prompt: '**31. marts.** Barista saņem algu 1 500 € no bankas konta.',
-        amount: 1500, d: 'alga', k: 'banka',
+        amount: 1500, d: 'alga', k: 'banka', cf: 'P', memo: 'Izmaksāta alga',
         explain: 'Algu izmaksas ↑ → debets. Nauda ↓ → kredīts. Dzīvē vēl jāaprēķina nodokļi, bet šeit tos izlaižam.',
       },
       {
         type: 'entry',
         prompt: '**31. marts.** Kafejnīca samaksā piegādātājam 700 € no 1 200 € rēķina.',
-        amount: 700, d: 'piegad', k: 'banka',
+        amount: 700, d: 'piegad', k: 'banka', cf: 'P', memo: 'Samaksāts piegādātājam',
         hint: 'Parāds samazinās. Kurā pusē samazinās saistības?',
         explain: 'Parāds piegādātājam ↓ → debets. Nauda ↓ → kredīts. Vēl jāsamaksā 500 €.',
       },
@@ -975,6 +1359,22 @@
         title: 'Marta bilance',
         body: 'Peļņa ir pievienota pašu kapitālam, un abas puses sakrīt līdz centam. Tikko tapa tava pirmā bilance.',
         visual: (ctx) => V.ledgerBilance(ctx.ledger, { date: '31.03.' }),
+      },
+      {
+        type: 'number',
+        prompt: 'Trešais pārskats. Cik liela bija kafejnīcas marta **pamatdarbības** naudas plūsma?',
+        visual: (ctx) => V.ledgerCash(ctx.ledger, 'banka', { hide: 'P', title: 'Naudas plūsmas pārskats, marts' }),
+        answer: 2300,
+        hint: 'Saskaiti pamatdarbības rindas: klientu maksājumus, algu un samaksu piegādātājam.',
+        wrong: [{ v: 2100, msg: 'Tā ir peļņa. Naudas plūsmā skaita tikai to, kas tiešām ienāca bankas kontā un izgāja no tā.' }],
+        explain: '4 500 − 1 500 − 700 = 2 300 €. Peļņa bija 2 100 €. Starpība: piegādātājam vēl nav samaksāti 500 € (+500), bet krājumos palikuši 300 € (−300).',
+      },
+      {
+        type: 'info',
+        kicker: 'Virsgrāmata',
+        title: 'Trīs pārskati, viens stāsts',
+        body: 'Naudas plūsmas pārskata beigu atlikums sakrīt ar naudu bilancē. Tagad kafejnīcai ir visi trīs pārskati: bilance, peļņas vai zaudējumu aprēķins un naudas plūsmas pārskats.',
+        visual: (ctx) => V.ledgerCash(ctx.ledger, 'banka', { check: true, title: 'Naudas plūsmas pārskats, marts' }),
       },
     ],
   };
@@ -1020,6 +1420,16 @@
     { t: 'Uzkrājumi', d: 'Paredzamās saistības, kuru summa vai termiņš vēl nav precīzi zināms, piemēram, iespējamais tiesvedības zaudējums.' },
     { t: 'Uzkrāšanas princips', d: 'Ieņēmumus un izdevumus atzīst periodā, uz kuru tie attiecas, neatkarīgi no naudas saņemšanas vai samaksas brīža.' },
     { t: 'Virsgrāmata', d: 'Visu uzņēmuma kontu kopums ar to ierakstiem un atlikumiem. No tās sastāda pārskatus.' },
+    { t: 'PVN (pievienotās vērtības nodoklis)', d: 'Patēriņa nodoklis, ko pievieno preču un pakalpojumu cenai. Uzņēmums to iekasē no pircēja un nodod valstij. Latvijā standarta likme ir 21 %.' },
+    { t: 'Aprēķinātais PVN', d: 'PVN, ko uzņēmums iekasē, pārdodot preces vai pakalpojumus. Līdz samaksai tas ir uzņēmuma parāds valstij.' },
+    { t: 'Priekšnodoklis', d: 'PVN, ko uzņēmums samaksājis piegādātājiem. PVN maksātājs to atskaita no aprēķinātā PVN.' },
+    { t: 'PVN maksātājs', d: 'Uzņēmums, kas reģistrēts VID PVN maksātāju reģistrā. Reģistrācija ir obligāta, kad apgrozījums pārsniedz likumā noteikto slieksni. Reģistrēties var arī brīvprātīgi.' },
+    { t: 'PVN deklarācija', d: 'Pārskats, ko par katru taksācijas periodu iesniedz VID. Tajā norāda aprēķināto PVN, priekšnodokli un maksājamo vai atmaksājamo summu.' },
+    { t: 'Naudas plūsmas pārskats', d: 'Pārskats par naudas ienākšanu un izmaksām periodā, sadalīts pamatdarbībā, ieguldīšanas darbībā un finansēšanas darbībā.' },
+    { t: 'Pamatdarbības naudas plūsma', d: 'Nauda no ikdienas darba: klientu maksājumi mīnus maksājumi piegādātājiem, darbiniekiem, par nomu un nodokļiem.' },
+    { t: 'Ieguldīšanas darbības naudas plūsma', d: 'Maksājumi par ilgtermiņa aktīvu iegādi un nauda, kas saņemta, tos pārdodot.' },
+    { t: 'Finansēšanas darbības naudas plūsma', d: 'Nauda no īpašniekiem un aizdevējiem un atpakaļ: pamatkapitāls, aizņēmumi, to atmaksa, dividendes.' },
+    { t: 'Tiešā un netiešā metode', d: 'Divi veidi, kā aprēķināt pamatdarbības naudas plūsmu: saskaitot visus maksājumus (tiešā) vai koriģējot peļņu par posteņiem bez naudas kustības (netiešā).' },
   ];
 
   const order = units.flatMap((u) => u.lessons);

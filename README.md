@@ -4,7 +4,7 @@ Interaktīva mājas lapa grāmatvedības pamatprincipu apguvei latviešu valodā
 
 ## Saturs
 
-12 nodarbības piecās nodaļās:
+16 nodarbības septiņās nodaļās:
 
 | Nodaļa | Nodarbības |
 | --- | --- |
@@ -12,9 +12,11 @@ Interaktīva mājas lapa grāmatvedības pamatprincipu apguvei latviešu valodā
 | 2. Darījumi un bilance | Kā darījumi maina bilanci · Bilances uzbūve |
 | 3. Divkāršais ieraksts | T-konts · Debeta un kredīta likumi · Kontējumi |
 | 4. Peļņa un principi | Ieņēmumi, izdevumi un peļņa · Uzkrāšanas princips · Grāmatvedības principi |
-| 5. Prakse | Kafejnīcas pirmais mēnesis (simulācija ar virsgrāmatu un bilanci) |
+| 5. Pievienotās vērtības nodoklis | Kā darbojas PVN · Priekšnodoklis un PVN grāmatojumi |
+| 6. Naudas plūsma | Naudas plūsmas pārskats · No peļņas līdz naudai (netiešā metode) |
+| 7. Prakse | Kafejnīcas pirmais mēnesis: simulācija ar virsgrāmatu, bilanci, peļņas vai zaudējumu aprēķinu un naudas plūsmas pārskatu |
 
-Uzdevumu veidi: atbilžu izvēle, vairākas pareizās atbildes, aprēķini, posteņu šķirošana grupās, bilances svari ar slīdni, darījuma ietekme uz bilances posteņiem, ātrā kārta un kontējumi ar T-kontiem.
+Uzdevumu veidi: atbilžu izvēle, vairākas pareizās atbildes, aprēķini, posteņu šķirošana grupās, bilances svari ar slīdni, darījuma ietekme uz bilances posteņiem, ātrā kārta un kontējumi ar T-kontiem (arī salikti, piemēram, ar PVN atsevišķā rindā).
 
 Papildus ir **trenažieris** (nejauši izvēlēti uzdevumi no pabeigtajām nodarbībām) un **vārdnīca** ar meklēšanu. XP, dienu sērija un pabeigtās nodarbības glabājas pārlūka `localStorage`.
 
@@ -57,4 +59,4 @@ Nodarbības ir datu objekti failā `js/content.js`. Piemēram, jautājums ar vie
 
 Jaunās nodarbības `id` pievieno atbilstošās nodaļas `lessons` sarakstam masīvā `units`. Visi soļu veidi ir aprakstīti komentārā faila sākumā.
 
-Piemēri ir vienkāršoti mācību nolūkiem (piemēram, simulācijā nav nodokļu). Latvijā grāmatvedību regulē Grāmatvedības likums un Gada pārskatu un konsolidēto gada pārskatu likums.
+Piemēri ir vienkāršoti mācību nolūkiem (piemēram, simulācijā un naudas plūsmas nodaļā PVN neņem vērā). PVN likmes un sliekšņi laika gaitā mainās, tāpēc aktuālās vērtības pārbaudi VID mājaslapā. Latvijā grāmatvedību regulē Grāmatvedības likums un Gada pārskatu un konsolidēto gada pārskatu likums.

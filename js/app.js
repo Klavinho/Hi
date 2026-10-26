@@ -519,7 +519,7 @@
       const wrap = h('div', { class: 'numfield' },
         h('label', { class: 'sr-only', for: id }, 'Tava atbilde eiro'),
         input,
-        h('span', { class: 'unit' }, step.unit == null ? '€' : step.unit));
+        h('span', { class: 'nf-unit' }, step.unit == null ? '€' : step.unit));
       input.addEventListener('input', ctx.onChange);
       const val = () => parseNum(input.value);
       return {
@@ -528,10 +528,11 @@
         ready: () => val() !== null,
         check() {
           const v = val();
-          const ok = Math.abs(v - step.answer) <= (step.tol || 0);
+          const near = (a, b, tol) => Math.abs(a - b) <= tol + 1e-9;
+          const ok = near(v, step.answer, step.tol || 0.004);
           wrap.classList.add(ok ? 'is-ok' : 'is-bad');
           let msg = step.hint;
-          const w = !ok && step.wrong && step.wrong.find((x) => x.v === v);
+          const w = !ok && step.wrong && step.wrong.find((x) => near(x.v, v, 0.004));
           if (w) msg = w.msg;
           return { ok, msg };
         },
@@ -826,15 +827,23 @@
       const L = ctx.ledger;
       const ids = step.accounts || Object.keys(L.accts);
       const A = (id) => (L && L.accts[id]) || C.accounts[id];
-      let pick = { d: null, k: null }, active = 'd', locked = false, posted = false;
-      const slots = {};
-      const mkSlot = (side) => {
+      // Vienkāršs ieraksts {d, k, amount} vai salikts {lines: [{s, a, v}]}
+      const lines = step.lines || [{ s: 'd', a: step.d, v: step.amount }, { s: 'k', a: step.k, v: step.amount }];
+      const pick = lines.map(() => null);
+      let active = 0, locked = false, posted = false;
+      const slots = lines.map((ln, i) => {
         const val = h('span', { class: 'slot-val' });
-        const b = h('button', { class: `slot slot-${side}`, type: 'button', onclick: () => { if (locked) return; active = side; paint(); } },
-          h('span', { class: 'slot-tag' }, side === 'd' ? 'D · Debets' : 'K · Kredīts'), val);
-        slots[side] = { b, val };
-        return b;
-      };
+        const b = h('button', {
+          class: `slot slot-${ln.s}`, type: 'button',
+          'aria-label': `${ln.s === 'd' ? 'Debeta' : 'Kredīta'} konts, ${eur(ln.v)}`,
+          onclick: () => { if (locked) return; active = i; paint(); },
+        }, val);
+        const row = h('div', { class: `jrow jrow-${ln.s}` },
+          h('span', { class: 'jside', 'aria-hidden': 'true' }, ln.s === 'd' ? 'D' : 'K'),
+          b,
+          h('span', { class: 'jamt num' }, eur(ln.v)));
+        return { b, val, row };
+      });
       const chips = ids.map((id) => {
         const a = A(id);
         return h('button', { class: 'acct', type: 'button', 'data-id': id, onclick: () => choose(id) },
@@ -843,71 +852,87 @@
       });
       function choose(id) {
         if (locked) return;
-        const other = active === 'd' ? 'k' : 'd';
-        if (pick[other] === id) pick[other] = null;
+        pick.forEach((p, i) => { if (p === id && i !== active) pick[i] = null; });
         pick[active] = id;
-        if (!pick[other]) active = other;
+        // pāriet uz nākamo tukšo rindu
+        for (let j = 1; j <= lines.length; j++) {
+          const n = (active + j) % lines.length;
+          if (!pick[n]) { active = n; break; }
+        }
         paint();
         ctx.onChange();
       }
       function paint() {
-        ['d', 'k'].forEach((s) => {
-          const { b, val } = slots[s];
-          b.classList.toggle('active', !locked && active === s);
-          b.classList.toggle('filled', !!pick[s]);
-          b.setAttribute('aria-pressed', String(!locked && active === s));
-          val.textContent = pick[s] ? A(pick[s]).name : 'izvēlies kontu';
-          val.classList.toggle('empty', !pick[s]);
+        slots.forEach(({ b, val }, i) => {
+          b.classList.toggle('active', !locked && active === i);
+          b.classList.toggle('filled', !!pick[i]);
+          b.setAttribute('aria-pressed', String(!locked && active === i));
+          val.textContent = pick[i] ? A(pick[i]).name : 'izvēlies kontu';
+          val.classList.toggle('empty', !pick[i]);
         });
         chips.forEach((c) => {
-          c.classList.toggle('used-d', pick.d === c.dataset.id);
-          c.classList.toggle('used-k', pick.k === c.dataset.id);
+          const i = pick.indexOf(c.dataset.id);
+          c.classList.toggle('used-d', i >= 0 && lines[i].s === 'd');
+          c.classList.toggle('used-k', i >= 0 && lines[i].s === 'k');
         });
       }
       const result = h('div', { class: 'entry-result', hidden: true });
       const el = h('div', { class: 'entry' },
-        h('div', { class: 'jline' }, mkSlot('d'), mkSlot('k'), h('span', { class: 'jamt num' }, eur(step.amount))),
-        h('p', { class: 'help' }, 'Izvēlies lodziņu D vai K un tad kontu no saraksta.'),
+        h('div', { class: 'journal' + (lines.length > 2 ? ' journal-multi' : '') }, slots.map((s) => s.row)),
+        h('p', { class: 'help' }, lines.length > 2
+          ? 'Izvēlies rindu un tad kontu no saraksta. Debeta rindas ir augšā, kredīta rindas ar atkāpi zemāk.'
+          : 'Izvēlies rindu D vai K un tad kontu no saraksta.'),
         h('div', { class: 'accts' }, chips),
         result);
       paint();
 
       function showResult() {
-        if (L && !posted) { L.post(step.d, step.k, step.amount); posted = true; }
+        const used = [...new Set(lines.map((l) => l.a))];
+        if (L && !posted) { L.post(lines.map((l) => ({ ...l })), { cf: step.cf, memo: step.memo }); posted = true; }
         el.classList.add('solved');
         result.hidden = false;
         if (L) {
           const n = L.entries.length - 1;
           result.innerHTML = `<p class="res-h">Virsgrāmatā · ieraksts #${n + 1}</p>` +
-            V.tpair(V.ledgerT(L, step.d, n), V.ledgerT(L, step.k, n)) +
+            V.tpair(...used.map((id) => V.ledgerT(L, id, n))) +
             V.eq(L.total('A'), L.total('S'), L.total('PK') + L.profit(), { pkLabel: 'Pašu kap. + peļņa' });
         } else {
-          const d = A(step.d), k = A(step.k);
           result.innerHTML = `<p class="res-h">Tā ieraksts izskatās kontos</p>` +
-            V.tpair(
-              V.tacct(d.name, { d: [step.amount], hl: { side: 'd', i: 0 }, tone: V.TONE[d.type] }),
-              V.tacct(k.name, { k: [step.amount], hl: { side: 'k', i: 0 }, tone: V.TONE[k.type] }));
+            V.tpair(...used.map((id) => {
+              const a = A(id), o = { d: [], k: [], tone: V.TONE[a.type] };
+              lines.forEach((l) => { if (l.a === id) o[l.s].push(l.v); });
+              o.hl = o.d.length ? { side: 'd', i: 0 } : { side: 'k', i: 0 };
+              return V.tacct(a.name, o);
+            }));
         }
         requestAnimationFrame(() => result.scrollIntoView({ block: 'nearest', behavior: REDUCE ? 'auto' : 'smooth' }));
       }
       return {
         el,
-        ready: () => !!(pick.d && pick.k),
+        ready: () => pick.every(Boolean),
         check() {
-          const ok = pick.d === step.d && pick.k === step.k;
-          slots.d.b.classList.add(pick.d === step.d ? 'is-ok' : 'is-bad');
-          slots.k.b.classList.add(pick.k === step.k ? 'is-ok' : 'is-bad');
-          let msg = step.hint || 'Padomā: kuri divi konti mainās un kurā virzienā?';
+          const right = lines.map((l, i) => pick[i] === l.a);
+          const ok = right.every(Boolean);
+          slots.forEach((s, i) => s.b.classList.add(right[i] ? 'is-ok' : 'is-bad'));
+          let msg = step.hint || 'Padomā: kuri konti mainās un kurā virzienā?';
           if (!ok) {
-            if (pick.d === step.k && pick.k === step.d) msg = 'Konti ir pareizi, bet puses samainītas. Kurš konts palielinās, un kāda veida tas ir?';
-            else if (pick.d === step.d || pick.k === step.k) msg = 'Viens konts ir pareizs, otrs ne. ' + (step.hint || '');
+            const want = new Set(lines.map((l) => l.a));
+            const sameSet = pick.every((p) => want.has(p));
+            const nRight = right.filter(Boolean).length;
+            if (sameSet) {
+              msg = lines.length === 2
+                ? 'Konti ir pareizi, bet puses samainītas. Kurš konts palielinās, un kāda veida tas ir?'
+                : 'Konti izvēlēti pareizi, bet ne katrs savā rindā. Pārbaudi katras rindas pusi un summu.';
+            } else if (nRight) {
+              msg = (lines.length === 2 ? 'Viens konts ir pareizs, otrs ne. ' : `Pareizi ir ${nRight} no ${lines.length} kontiem. `) + (step.hint || '');
+            }
           }
           if (ok) showResult();
           return { ok, msg };
         },
         reveal() {
-          pick = { d: step.d, k: step.k };
-          ['d', 'k'].forEach((s) => { slots[s].b.classList.remove('is-bad'); slots[s].b.classList.add('is-ok'); });
+          lines.forEach((l, i) => (pick[i] = l.a));
+          slots.forEach((s) => { s.b.classList.remove('is-bad'); s.b.classList.add('is-ok'); });
           paint();
           showResult();
         },
@@ -915,9 +940,9 @@
         unlock() {
           locked = false;
           el.classList.remove('locked');
-          if (slots.d.b.classList.contains('is-bad')) active = 'd';
-          else if (slots.k.b.classList.contains('is-bad')) active = 'k';
-          ['d', 'k'].forEach((s) => slots[s].b.classList.remove('is-ok', 'is-bad'));
+          const bad = slots.findIndex((s) => s.b.classList.contains('is-bad'));
+          if (bad >= 0) active = bad;
+          slots.forEach((s) => s.b.classList.remove('is-ok', 'is-bad'));
           paint();
         },
       };

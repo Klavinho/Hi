@@ -6,12 +6,15 @@
   const TYPE = { A: 'Aktīvs', S: 'Saistības', PK: 'Pašu kapitāls', I: 'Ieņēmumi', E: 'Izdevumi' };
   const TONE = { A: 'a', S: 's', PK: 'pk', I: 'pk', E: 'pk' };
 
-  // 8000 -> "8 000", -2000 -> "−2 000"
+  // 8000 -> "8 000", -2000 -> "−2 000", 0.63 -> "0,63"
   function num(n) {
     if (typeof n !== 'number') return String(n);
-    const s = Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, NB);
-    return (n < 0 ? '−' : '') + s;
+    const r = Math.round(Math.abs(n) * 100) / 100;
+    const [i, f] = r.toFixed(2).split('.');
+    const s = i.replace(/\B(?=(\d{3})+(?!\d))/g, NB) + (f === '00' ? '' : ',' + f);
+    return (n < 0 && r !== 0 ? '−' : '') + s;
   }
+  const signed = (n) => (n > 0 ? '+' : '') + num(n);
   const eur = (n) => (n === '?' ? '?' : num(n) + NB + '€');
   const sum = (arr) => arr.reduce((s, v) => s + (typeof v === 'number' ? v : 0), 0);
 
@@ -133,6 +136,82 @@
 
   const formula = (s) => `<p class="formula">${md(s)}</p>`;
 
+  /* ---------- Pārskats ar rindām un starpsummām ---------- */
+  // rows: {h} | {l, v} | {l, v, total: 'sub' | 'grand'}; v var būt skaitlis, teksts vai '?'
+  function report(o) {
+    const val = (v) => (v == null ? '' : v === '?' ? '<b class="q">?</b>' : typeof v === 'number' ? num(v) : v);
+    const body = o.rows
+      .map((r) => {
+        if (r.h) return `<div class="bil-h">${r.h}</div>`;
+        if (r.total) return `<div class="bil-total${r.total === 'sub' ? ' sub' : ''}"><span>${md(r.l)}</span><span class="num">${val(r.v)}</span></div>`;
+        return `<div class="bil-row"><span class="bil-l">${md(r.l)}</span><span class="bil-dots" aria-hidden="true"></span><span class="num">${val(r.v)}</span></div>`;
+      })
+      .join('');
+    return `<div class="bil report">${o.title ? `<div class="bil-date">${o.title}</div>` : ''}<div class="bil-side">${body}</div>${o.check || ''}</div>`;
+  }
+
+  /* ---------- Naudas plūsmas pārskats ---------- */
+  // sections: [{t, total, rows: [[apraksts, summa]], hide}]
+  function cashflow(o) {
+    const rows = [];
+    let change = 0, unknown = !!o.hideChange;
+    o.sections.forEach((s) => {
+      rows.push({ h: s.t });
+      if (!s.rows.length) rows.push({ l: 'Nav maksājumu', v: 0 });
+      s.rows.forEach((r) => rows.push({ l: r[0], v: r[1] }));
+      const tot = sum(s.rows.map((r) => r[1]));
+      change += tot;
+      if (s.hide) unknown = true;
+      rows.push({ l: s.total, v: s.hide ? '?' : tot, total: 'sub' });
+    });
+    rows.push({ h: 'Kopā' });
+    rows.push({ l: 'Naudas izmaiņa periodā', v: unknown ? '?' : change });
+    if (o.open != null) {
+      rows.push({ l: 'Naudas atlikums perioda sākumā', v: o.open });
+      rows.push({ l: 'Naudas atlikums perioda beigās', v: unknown || o.hideClose ? '?' : o.open + change, total: 'grand' });
+    }
+    let check = '';
+    if (o.expect != null && !unknown) {
+      const ok = o.open + change === o.expect;
+      check = `<p class="bil-check ${ok ? 'ok' : 'bad'}">${ok ? '✓ Sakrīt ar naudu bilancē' : '✗ Nesakrīt ar naudu bilancē'} <span class="num">${eur(o.expect)}</span></p>`;
+    }
+    return report({ title: o.title || 'Naudas plūsmas pārskats', rows, check });
+  }
+
+  /* ---------- Bankas konta izraksts ---------- */
+  function statement(o) {
+    const rows = o.rows
+      .map((r) => `<tr><td class="num">${r[0]}</td><td>${r[1]}</td><td class="num ${r[2] < 0 ? 'out' : 'in'}">${signed(r[2])}</td></tr>`)
+      .join('');
+    const open = o.open != null ? `<tr class="st-bal"><td></td><td>Sākuma atlikums</td><td class="num">${num(o.open)}</td></tr>` : '';
+    return `<div class="table-scroll"><table class="stmt"><caption>${o.title || 'Bankas konta izraksts'}</caption><thead><tr><th scope="col">Datums</th><th scope="col">Apraksts</th><th scope="col">Summa, €</th></tr></thead><tbody>${open}${rows}</tbody></table></div>`;
+  }
+
+  /* ---------- Kases čeks ---------- */
+  function receipt(o) {
+    const cents = (n) => (Math.round(n * 100) / 100).toFixed(2).replace('.', ',');
+    const line = (l, v, cls) => `<div class="rc-row${cls ? ' ' + cls : ''}"><span>${l}</span><span>${v}</span></div>`;
+    return `<figure class="receipt" aria-label="Kases čeks"><div class="rc-head">${o.shop}</div>${o.items.map((i) => line(i[0], cents(i[1]))).join('')}<div class="rc-cut"></div>${line('Summa bez PVN', cents(o.net))}${line(`PVN ${o.rate} %`, cents(o.vat))}${line('KOPĀ EUR', cents(o.net + o.vat), 'rc-total')}${o.foot ? `<div class="rc-foot">${o.foot}</div>` : ''}</figure>`;
+  }
+
+  /* ---------- Summas sadalījums: cena + PVN ---------- */
+  function split(net, vat) {
+    const p = (net / (net + vat)) * 100;
+    return `<div class="split"><div class="split-bar"><span class="split-net" style="width:${p.toFixed(1)}%">Cena bez PVN <b class="num">${eur(net)}</b></span><span class="split-vat">PVN <b class="num">${eur(vat)}</b></span></div><div class="split-total"><span>Kopā ar PVN</span><b class="num">${eur(net + vat)}</b></div></div>`;
+  }
+
+  /* ---------- Žurnāla ieraksti (statiski) ---------- */
+  // entries: [{t, lines: [['d'|'k', 'Konts', summa]]}]
+  const journal = (entries) =>
+    `<div class="jbook">${entries
+      .map(
+        (e) =>
+          `<div class="jentry">${e.t ? `<p class="jentry-t">${md(e.t)}</p>` : ''}<div class="journal">${e.lines
+            .map((l) => `<div class="jrow jrow-${l[0]}"><span class="jside">${l[0] === 'd' ? 'D' : 'K'}</span><span class="jacc">${l[1]}</span><span class="jamt num">${eur(l[2])}</span></div>`)
+            .join('')}</div></div>`
+      )
+      .join('')}</div>`;
+
   /* ---------- Svari ---------- */
   function scale(init, o = {}) {
     const max = o.max || 20000;
@@ -213,21 +292,22 @@
   }
 
   /* ---------- Virsgrāmata (simulācijai) ---------- */
+  // Ieraksts: { lines: [{ a: konts, s: 'd' | 'k', v: summa }], cf: 'P' | 'I' | 'F', memo }
   function makeLedger(pairs) {
     const accts = {};
     pairs.forEach(([id, a]) => (accts[id] = a));
     const L = { accts, entries: [] };
-    L.post = (d, k, amt) => L.entries.push({ d, k, amt });
+    L.post = (lines, meta = {}) => L.entries.push({ lines, cf: meta.cf, memo: meta.memo });
     L.bal = (id) => {
       let dd = 0, kk = 0;
-      L.entries.forEach((e) => { if (e.d === id) dd += e.amt; if (e.k === id) kk += e.amt; });
+      L.entries.forEach((e) => e.lines.forEach((l) => { if (l.a === id) { if (l.s === 'd') dd += l.v; else kk += l.v; } }));
       const t = accts[id].type;
       return t === 'A' || t === 'E' ? dd - kk : kk - dd;
     };
     L.ids = (type) => Object.keys(accts).filter((id) => accts[id].type === type);
     L.total = (type) => sum(L.ids(type).map(L.bal));
     L.profit = () => L.total('I') - L.total('E');
-    L.hasPL = () => L.entries.some((e) => /^(I|E)$/.test(accts[e.d].type) || /^(I|E)$/.test(accts[e.k].type));
+    L.hasPL = () => L.entries.some((e) => e.lines.some((l) => /^(I|E)$/.test(accts[l.a].type)));
     return L;
   }
 
@@ -235,10 +315,13 @@
     const a = L.accts[id];
     const d = [], k = [], md_ = [], mk = [];
     let hl = null;
-    L.entries.forEach((e, i) => {
-      if (e.d === id) { d.push(e.amt); md_.push('#' + (i + 1)); if (i === hlEntry) hl = { side: 'd', i: d.length - 1 }; }
-      if (e.k === id) { k.push(e.amt); mk.push('#' + (i + 1)); if (i === hlEntry) hl = { side: 'k', i: k.length - 1 }; }
-    });
+    L.entries.forEach((e, i) => e.lines.forEach((l) => {
+      if (l.a !== id) return;
+      const col = l.s === 'd' ? d : k;
+      col.push(l.v);
+      (l.s === 'd' ? md_ : mk).push('#' + (i + 1));
+      if (i === hlEntry) hl = { side: l.s, i: col.length - 1 };
+    }));
     const nat = a.type === 'A' || a.type === 'E' ? 'd' : 'k';
     return tacct(a.name, { d, k, memo: { d: md_, k: mk }, hl, close: { side: nat, v: L.bal(id) }, tone: TONE[a.type] });
   }
@@ -269,8 +352,28 @@
     return pnl({ I, E, hide: o.hide, title: o.title });
   }
 
+  // Tiešās metodes naudas plūsmas pārskats no ierakstiem, kas skar naudas kontu.
+  function ledgerCash(L, cash, o = {}) {
+    const sec = { P: [], I: [], F: [] };
+    L.entries.forEach((e) => {
+      const v = sum(e.lines.filter((l) => l.a === cash).map((l) => (l.s === 'd' ? l.v : -l.v)));
+      if (v && e.cf) sec[e.cf].push([e.memo || 'Maksājums', v]);
+    });
+    return cashflow({
+      title: o.title,
+      open: 0,
+      expect: o.check ? L.bal(cash) : null,
+      sections: [
+        { t: 'Pamatdarbība', total: 'Pamatdarbības naudas plūsma', rows: sec.P, hide: o.hide === 'P' },
+        { t: 'Ieguldīšanas darbība', total: 'Ieguldīšanas darbības naudas plūsma', rows: sec.I, hide: o.hide === 'I' },
+        { t: 'Finansēšanas darbība', total: 'Finansēšanas darbības naudas plūsma', rows: sec.F, hide: o.hide === 'F' },
+      ],
+    });
+  }
+
   window.V = {
-    TYPE, TONE, num, eur, md, mdBlock, eq, tacct, tpair, bilance, pnl, cards, flow, rules, chips,
-    timeline, years, defs, formula, scale, makeLedger, ledgerT, ledgerBilance, ledgerPnl,
+    TYPE, TONE, num, signed, eur, md, mdBlock, eq, tacct, tpair, bilance, pnl, cards, flow, rules, chips,
+    timeline, years, defs, formula, report, cashflow, statement, receipt, split, journal, scale,
+    makeLedger, ledgerT, ledgerBilance, ledgerPnl, ledgerCash,
   };
 })();
