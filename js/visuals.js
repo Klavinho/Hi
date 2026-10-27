@@ -296,8 +296,15 @@
   function makeLedger(pairs) {
     const accts = {};
     pairs.forEach(([id, a]) => (accts[id] = a));
-    const L = { accts, entries: [] };
+    const L = ledgerOver(accts, []);
     L.post = (lines, meta = {}) => L.entries.push({ lines, cf: meta.cf, memo: meta.memo });
+    // Virsgrāmata, kāda tā bija pēc ieraksta n (pārskatot iepriekšējos soļus).
+    L.upTo = (n) => ledgerOver(accts, L.entries.slice(0, n + 1));
+    return L;
+  }
+
+  function ledgerOver(accts, entries) {
+    const L = { accts, entries };
     L.bal = (id) => {
       let dd = 0, kk = 0;
       L.entries.forEach((e) => e.lines.forEach((l) => { if (l.a === id) { if (l.s === 'd') dd += l.v; else kk += l.v; } }));

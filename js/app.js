@@ -60,10 +60,18 @@
     x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z"/></svg>',
     check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 16.2-4.2-4.2-1.4 1.4 5.6 5.6L21 7.5l-1.4-1.4-10.1 10.1Z"/></svg>',
     bulb: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2Zm-3 18h6v2H9v-2Z"/></svg>',
+    left: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.8 5.3 4.1 12l6.7 6.7 1.4-1.4L7.9 13H20v-2H7.9l4.3-4.3-1.4-1.4Z"/></svg>',
+    chev: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7.4 8.6 4.6 4.6 4.6-4.6L18 10l-6 6-6-6 1.4-1.4Z"/></svg>',
+    book: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5a.5.5 0 0 0 0 1H20v3H6.5A2.5 2.5 0 0 1 4 19.5v-15ZM8 6v2h8V6H8Zm0 4v2h6v-2H8Z"/></svg>',
     arrow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 5.3 19.9 12l-6.7 6.7-1.4-1.4 4.3-4.3H4v-2h12.1l-4.3-4.3 1.4-1.4Z"/></svg>',
   };
 
   const LESSONS = C.order.map((id) => C.lessons[id]);
+  // Katram jautājumam piesaista pēdējo skaidrojumu pirms tā. Tas der arī trenažierī.
+  LESSONS.forEach((l) => {
+    let last = null;
+    l.steps.forEach((s) => { if (s.type === 'info') last = s; else if (last) s._ctx = last; });
+  });
   const lessonNo = (id) => C.order.indexOf(id) + 1;
   const isDone = (id) => !!P.done[id];
   const nextLesson = () => LESSONS.find((l) => !isDone(l.id)) || null;
@@ -281,13 +289,24 @@
     view = 'player';
     document.body.classList.add('in-lesson');
     const steps = opts.steps || lesson.steps;
+    const N = steps.length;
+    // Simulācijā ieraksti ir atkarīgi cits no cita, tāpēc tur izlaist nevar.
+    const skippable = !lesson.ledger;
     const run = {
-      i: 0, xp: 0, asked: 0, first: 0,
+      seq: steps.map((_, i) => i), // apmeklējuma secība; izlaistie tiek pievienoti beigās
+      pos: 0,
+      done: new Set(),             // izlasītie skaidrojumi un atrisinātie jautājumi
+      how: {},                     // soļa nr. -> 'ok' | 'reveal'
+      tries: {},                   // soļa nr. -> mēģinājumu skaits
+      result: {},                  // soļa nr. -> ātrās kārtas atbildes
+      entryAt: {},                 // soļa nr. -> ieraksta nr. virsgrāmatā
+      snap: new Map(),             // skaidrojuma slaids -> tā saturs, kāds tas bija redzams
+      xp: 0, asked: 0, first: 0,
       ledger: lesson.ledger ? V.makeLedger(lesson.ledger.map((id) => [id, C.accounts[id]])) : null,
     };
 
     const barFill = h('i');
-    const bar = h('div', { class: 'p-bar', role: 'progressbar', 'aria-label': 'Nodarbības progress', 'aria-valuemin': '0', 'aria-valuemax': String(steps.length) }, barFill);
+    const bar = h('div', { class: 'p-bar', role: 'progressbar', 'aria-label': 'Nodarbības progress', 'aria-valuemin': '0', 'aria-valuemax': String(N) }, barFill);
     const count = h('span', { class: 'p-count num' });
     const title = h('span', { class: 'p-title' }, opts.practice ? 'Trenažieris' : `${lessonNo(lesson.id)}. ${lesson.title}`);
     const top = h('div', { class: 'p-top' },
@@ -297,8 +316,9 @@
         count));
     const stage = h('main', { class: 'p-stage' });
     const fb = h('div', { class: 'fb', 'aria-live': 'polite' });
+    const backBtn = h('button', { class: 'btn btn-quiet dock-back', type: 'button', 'aria-label': 'Atpakaļ uz iepriekšējo slaidu', title: 'Atpakaļ', html: `${ICON.left}<span class="lbl">Atpakaļ</span>`, onclick: back });
     const btns = h('div', { class: 'dock-btns' });
-    const dock = h('footer', { class: 'p-dock' }, h('div', { class: 'dock-inner' }, fb, btns));
+    const dock = h('footer', { class: 'p-dock' }, h('div', { class: 'dock-inner' }, backBtn, fb, btns));
     const root = h('div', { class: 'player' }, top, stage, dock);
     app.replaceChildren(root);
     window.scrollTo(0, 0);
@@ -306,28 +326,63 @@
     const syncPad = () => root.style.setProperty('--dock-h', dock.offsetHeight + 'px');
     if ('ResizeObserver' in window) new ResizeObserver(syncPad).observe(dock);
 
-    let step = null, ctl = null, tries = 0, state = '';
+    let idx = 0, step = null, ctl = null, state = '';
+    const isRevisit = () => run.pos >= N;
 
     function show() {
-      step = steps[run.i];
-      tries = 0;
-      barFill.style.width = (run.i / steps.length) * 100 + '%';
-      bar.setAttribute('aria-valuenow', String(run.i));
-      count.textContent = `${run.i + 1}/${steps.length}`;
-      const ctx = { ledger: run.ledger, onChange: refresh, complete: selfComplete };
+      idx = run.seq[run.pos];
+      step = steps[idx];
+      const reviewing = step.type !== 'info' && !!run.how[idx];
+      barFill.style.width = (run.done.size / N) * 100 + '%';
+      bar.setAttribute('aria-valuenow', String(run.done.size));
+      count.textContent = `${idx + 1}/${N}`;
+      const ctx = {
+        ledger: run.ledger,
+        onChange: refresh,
+        complete: selfComplete,
+        review: reviewing ? run.result[idx] || null : null,
+        // Ieraksts virsgrāmatā nonāk tikai vienreiz, arī ja pie soļa atgriežas.
+        post: (lines, meta) => {
+          if (run.entryAt[idx] == null) { run.ledger.post(lines, meta); run.entryAt[idx] = run.ledger.entries.length - 1; }
+          return run.entryAt[idx];
+        },
+      };
       const card = h('article', { class: 'card card-' + step.type });
-      card.append(h('p', { class: 'kicker' }, step.kicker || KICK[step.type] || ''));
-      if (step.title) card.append(h('h2', { class: 'step-title' }, step.title));
-      if (step.body) card.append(h('div', { class: 'prose', html: mdBlock(step.body) }));
-      if (step.prompt) card.append(h('div', { class: 'prompt', html: md(step.prompt) }));
-      if (step.visual) card.append(visual(step.visual, ctx));
-      ctl = step.type === 'info' ? null : COMP[step.type](step, ctx);
-      if (ctl) card.append(ctl.el);
-      if (step.after) card.append(h('div', { class: 'prose prose-after', html: mdBlock(step.after) }));
+      card.append(h('div', { class: 'kick-row' },
+        h('p', { class: 'kicker' }, step.kicker || KICK[step.type] || ''),
+        isRevisit() ? h('span', { class: 'tag-skip' }, 'Izlaists jautājums') : null));
+      if (step.type === 'info') {
+        if (step.title) card.append(h('h2', { class: 'step-title' }, step.title));
+        if (!run.snap.has(step)) run.snap.set(step, infoBody(step, ctx));
+        card.append(...run.snap.get(step).map((n) => n.cloneNode(true)));
+        ctl = null;
+      } else {
+        if (step._ctx) card.append(contextPanel(step._ctx, ctx));
+        if (step.title) card.append(h('h2', { class: 'step-title' }, step.title));
+        if (step.prompt) card.append(h('div', { class: 'prompt', html: md(step.prompt) }));
+        if (step.visual) card.append(visual(step.visual, ctx));
+        ctl = COMP[step.type](step, ctx);
+        card.append(ctl.el);
+        if (step.after) card.append(h('div', { class: 'prose prose-after', html: mdBlock(step.after) }));
+      }
       stage.replaceChildren(card);
       window.scrollTo(0, 0);
-      setDock(ctl ? (ctl.selfPaced ? 'self' : 'ask') : 'info');
-      if (ctl && ctl.focus && FINE) ctl.focus();
+      if (!ctl) setDock('info');
+      else if (reviewing) { if (!ctl.selfPaced) { ctl.reveal(); ctl.lock(); } setDock('review'); }
+      else { setDock(ctl.selfPaced ? 'self' : 'ask'); if (ctl.focus && FINE) ctl.focus(); }
+    }
+
+    // Salokāms bloks ar pēdējo skaidrojumu pirms jautājuma, lai to var pārlasīt atbildot.
+    function contextPanel(info, ctx) {
+      const nodes = run.snap.has(info) ? run.snap.get(info).map((n) => n.cloneNode(true)) : infoBody(info, ctx);
+      return h('details', { class: 'ctx', open: step.context === 'open' },
+        h('summary', null,
+          h('span', { class: 'ctx-ic', html: ICON.book }),
+          h('span', { class: 'ctx-txt' },
+            h('span', { class: 'ctx-k' }, opts.practice ? 'Atgādinājums' : 'Iepriekšējais slaids'),
+            h('span', { class: 'ctx-t' }, info.title || 'Skaidrojums')),
+          h('span', { class: 'ctx-chev', html: ICON.chev })),
+        h('div', { class: 'ctx-body' }, nodes));
     }
 
     const fbHead = (icon, text, gain) =>
@@ -337,7 +392,8 @@
         gain ? h('span', { class: 'fb-xp num' }, `+${gain} XP`) : null);
     const fbBody = (text) => (text ? h('div', { class: 'fb-body', html: md(text) }) : null);
     const primary = (label, fn) => { const b = h('button', { class: 'btn btn-primary', type: 'button', onclick: fn }, label); dockPrimary = b; return b; };
-    const ghost = (label, fn) => h('button', { class: 'btn btn-ghost', type: 'button', onclick: fn }, label);
+    const ghost = (label, fn, title) => h('button', { class: 'btn btn-ghost', type: 'button', title, onclick: fn }, label);
+    const skipBtn = () => ghost('Izlaist', skip, 'Pāriet tālāk un atgriezties pie šī jautājuma nodarbības beigās');
 
     function setDock(s, o = {}) {
       state = s;
@@ -345,13 +401,31 @@
       fb.replaceChildren();
       btns.replaceChildren();
       dockPrimary = null;
+      backBtn.disabled = run.pos === 0;
       const put = (...els) => fb.append(...els.filter(Boolean));
+      const canSkip = skippable && !isRevisit();
       if (s === 'info') btns.append(primary('Turpināt', next));
-      else if (s === 'ask') { const b = primary('Pārbaudīt', check); b.disabled = !ctl.ready(); btns.append(b); }
-      else if (s === 'self') { const b = primary('Turpināt', next); b.disabled = true; btns.append(b); }
-      else if (s === 'ok') { put(fbHead(ICON.check, PRAISE[Math.floor(Math.random() * PRAISE.length)], o.gain), fbBody(step.explain)); btns.append(primary('Turpināt', next)); }
+      else if (s === 'ask') {
+        const b = primary('Pārbaudīt', check);
+        b.disabled = !ctl.ready();
+        if (canSkip) btns.append(skipBtn());
+        else if (isRevisit()) btns.append(ghost('Parādīt risinājumu', reveal));
+        btns.append(b);
+      } else if (s === 'self') {
+        const b = primary('Turpināt', next);
+        b.disabled = true;
+        if (canSkip) btns.append(skipBtn());
+        btns.append(b);
+      } else if (s === 'ok') { put(fbHead(ICON.check, PRAISE[Math.floor(Math.random() * PRAISE.length)], o.gain), fbBody(step.explain)); btns.append(primary('Turpināt', next)); }
       else if (s === 'bad') { put(fbHead(ICON.x, 'Vēl ne gluži'), fbBody(o.msg || step.hint || 'Padomā vēlreiz un pamēģini.')); btns.append(ghost('Parādīt risinājumu', reveal), primary('Mēģināt vēlreiz', retry)); }
       else if (s === 'reveal') { put(fbHead(ICON.bulb, 'Risinājums'), fbBody(step.explain)); btns.append(primary('Turpināt', next)); }
+      else if (s === 'review') {
+        const res = run.result[idx];
+        if (res) put(fbHead(ICON.bulb, `Jau atbildēts: ${res.filter(Boolean).length} no ${res.length} pareizi`));
+        else if (run.how[idx] === 'ok') put(fbHead(ICON.check, 'Jau atbildēts pareizi'), fbBody(step.explain));
+        else put(fbHead(ICON.bulb, 'Risinājums'), fbBody(step.explain));
+        btns.append(primary('Turpināt', next));
+      }
       if (s === 'ok' || s === 'bad' || s === 'reveal') requestAnimationFrame(() => dockPrimary && dockPrimary.focus({ preventScroll: true }));
       syncPad();
     }
@@ -359,37 +433,68 @@
     function refresh() {
       if (state === 'ask' && dockPrimary) dockPrimary.disabled = !ctl.ready();
     }
+    function resolve(how) {
+      run.how[idx] = how;
+      run.done.add(idx);
+      barFill.style.width = (run.done.size / N) * 100 + '%';
+    }
     function check() {
       if (!ctl || !ctl.ready()) return;
-      if (tries === 0) run.asked++;
-      tries++;
+      const t = (run.tries[idx] = (run.tries[idx] || 0) + 1);
+      if (t === 1) run.asked++;
       const r = ctl.check();
       ctl.lock();
       if (r.ok) {
-        const gain = tries === 1 ? 10 : 5;
-        if (tries === 1) run.first++;
+        const gain = t === 1 ? 10 : 5;
+        if (t === 1) run.first++;
         run.xp += gain;
+        resolve('ok');
         setDock('ok', { gain });
       } else {
         setDock('bad', { msg: r.msg });
       }
     }
     function retry() { ctl.unlock(); setDock('ask'); if (ctl.focus && FINE) ctl.focus(); }
-    function reveal() { ctl.reveal(); ctl.lock(); setDock('reveal'); }
+    function reveal() {
+      if (!run.tries[idx]) { run.tries[idx] = 1; run.asked++; }
+      ctl.reveal();
+      ctl.lock();
+      resolve('reveal');
+      setDock('reveal');
+    }
     function selfComplete(res) {
       run.asked += res.total;
       run.first += res.correct;
+      run.result[idx] = res.results;
       const gain = res.correct * 2;
       run.xp += gain;
+      resolve(res.correct === res.total ? 'ok' : 'reveal');
       dock.dataset.state = res.correct === res.total ? 'ok' : 'reveal';
+      btns.querySelectorAll('.btn-ghost').forEach((b) => b.remove());
       fb.replaceChildren(fbHead(res.correct === res.total ? ICON.check : ICON.bulb, `${res.correct} no ${res.total} pareizi`, gain));
       if (dockPrimary) { dockPrimary.disabled = false; dockPrimary.focus({ preventScroll: true }); }
       syncPad();
     }
     function next() {
-      run.i++;
-      if (run.i < steps.length) show();
+      if (step.type === 'info') run.done.add(idx);
+      advance();
+    }
+    function skip() {
+      // Jautājums atgriežas nodarbības beigās (tikai vienu reizi rindā).
+      if (!run.seq.slice(run.pos + 1).includes(idx)) run.seq.push(idx);
+      advance();
+    }
+    function advance() {
+      run.pos++;
+      // Ja izlaistais jautājums jau atbildēts, atgriežoties ar «Atpakaļ», beigās to vairs nerāda.
+      while (run.pos < run.seq.length && run.pos >= N && run.done.has(run.seq[run.pos])) run.pos++;
+      if (run.pos < run.seq.length) show();
       else finish();
+    }
+    function back() {
+      if (run.pos === 0) return;
+      run.pos--;
+      show();
     }
     function finish() {
       dockPrimary = null;
@@ -405,7 +510,7 @@
       window.scrollTo(0, 0);
     }
     function askExit() {
-      if (run.i === 0 && tries === 0) { go('home'); return; }
+      if (run.done.size === 0 && !Object.keys(run.tries).length) { go('home'); return; }
       const keep = h('button', { class: 'btn btn-primary', type: 'button' }, 'Turpināt mācīties');
       const ov = h('div', { class: 'overlay', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'exit-t' },
         h('div', { class: 'sheet' },
@@ -419,6 +524,14 @@
     }
 
     show();
+  }
+
+  function infoBody(step, ctx) {
+    const nodes = [];
+    if (step.body) nodes.push(h('div', { class: 'prose', html: mdBlock(step.body) }));
+    if (step.visual) nodes.push(visual(step.visual, ctx));
+    if (step.after) nodes.push(h('div', { class: 'prose prose-after', html: mdBlock(step.after) }));
+    return nodes;
   }
 
   function visual(v, ctx) {
@@ -803,9 +916,9 @@
         if (idx < step.items.length) showItem();
         else finish();
       }
-      function finish() {
+      function renderDone() {
         busy = true;
-        dots.forEach((d) => d.classList.remove('cur'));
+        dots.forEach((d, i) => { d.classList.remove('cur'); d.classList.add(results[i] ? 'ok' : 'bad'); });
         counter.textContent = '';
         stmt.textContent = `${correct} no ${step.items.length} pareizi`;
         opts.replaceChildren();
@@ -817,9 +930,19 @@
             h('span', { class: 'q-mark', html: results[i] ? ICON.check : ICON.x }),
             h('span', null, it.t),
             h('b', null, step.options[it.a])))));
-        ctx.complete({ correct, total: step.items.length });
       }
-      showItem();
+      function finish() {
+        renderDone();
+        ctx.complete({ correct, total: step.items.length, results: results.slice() });
+      }
+      if (ctx.review) {
+        // Atgriežoties pie jau izspēlētas kārtas, rāda tās rezultātu.
+        results.push(...ctx.review);
+        correct = results.filter(Boolean).length;
+        renderDone();
+      } else {
+        showItem();
+      }
       return { el: box, selfPaced: true };
     },
 
@@ -830,7 +953,7 @@
       // Vienkāršs ieraksts {d, k, amount} vai salikts {lines: [{s, a, v}]}
       const lines = step.lines || [{ s: 'd', a: step.d, v: step.amount }, { s: 'k', a: step.k, v: step.amount }];
       const pick = lines.map(() => null);
-      let active = 0, locked = false, posted = false;
+      let active = 0, locked = false;
       const slots = lines.map((ln, i) => {
         const val = h('span', { class: 'slot-val' });
         const b = h('button', {
@@ -888,14 +1011,14 @@
 
       function showResult() {
         const used = [...new Set(lines.map((l) => l.a))];
-        if (L && !posted) { L.post(lines.map((l) => ({ ...l })), { cf: step.cf, memo: step.memo }); posted = true; }
         el.classList.add('solved');
         result.hidden = false;
         if (L) {
-          const n = L.entries.length - 1;
+          const n = ctx.post(lines.map((l) => ({ ...l })), { cf: step.cf, memo: step.memo });
+          const LV = L.upTo(n);
           result.innerHTML = `<p class="res-h">Virsgrāmatā · ieraksts #${n + 1}</p>` +
-            V.tpair(...used.map((id) => V.ledgerT(L, id, n))) +
-            V.eq(L.total('A'), L.total('S'), L.total('PK') + L.profit(), { pkLabel: 'Pašu kap. + peļņa' });
+            V.tpair(...used.map((id) => V.ledgerT(LV, id, n))) +
+            V.eq(LV.total('A'), LV.total('S'), LV.total('PK') + LV.profit(), { pkLabel: 'Pašu kap. + peļņa' });
         } else {
           result.innerHTML = `<p class="res-h">Tā ieraksts izskatās kontos</p>` +
             V.tpair(...used.map((id) => {

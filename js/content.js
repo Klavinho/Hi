@@ -1,6 +1,8 @@
 /* Debets & Kredīts — kursa saturs.
  *
- * Katra nodarbība ir soļu virkne. Soļu veidi:
+ * Katra nodarbība ir soļu virkne. Jautājumos automātiski var pārlasīt pēdējo skaidrojumu
+ * pirms tiem; ar `context: 'open'` tas ir atvērts jau sākumā (ja jautājums tieši uz to atsaucas).
+ * Soļu veidi:
  *   info    — skaidrojums (title, body, visual, after)
  *   choice  — viena pareizā atbilde (options: [{t, ok, why}])
  *   multi   — vairākas pareizās atbildes
@@ -351,6 +353,7 @@
       },
       {
         type: 'choice',
+        context: 'open',
         prompt: 'Kafejnīca vienojas ar piegādātāju: 2 000 € parādu par precēm tā atmaksās divu gadu laikā kā aizdevumu. Kurš no četriem veidiem tas ir?',
         options: [
           { t: 'Aktīvi ↑ Pasīvi ↑', why: 'Neviens jauns aktīvs nerodas: nauda nekustas.' },
@@ -921,7 +924,8 @@
       },
       {
         type: 'choice',
-        prompt: 'Kam pieder šie 0,63 €?',
+        context: 'open',
+        prompt: 'Kapučīno čekā ir **0,63 € PVN**. Kam pieder šī nauda?',
         options: [
           { t: 'Kafejnīcai: tie ir tās ieņēmumi', why: 'Kafejnīca šo naudu saņem, bet tā nav nopelnīta. Tā jānodod valstij.' },
           { t: 'Valstij: kafejnīca tos tikai iekasē', ok: true },

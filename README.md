@@ -18,6 +18,8 @@ Interaktīva mājas lapa grāmatvedības pamatprincipu apguvei latviešu valodā
 
 Uzdevumu veidi: atbilžu izvēle, vairākas pareizās atbildes, aprēķini, posteņu šķirošana grupās, bilances svari ar slīdni, darījuma ietekme uz bilances posteņiem, ātrā kārta un kontējumi ar T-kontiem (arī salikti, piemēram, ar PVN atsevišķā rindā).
 
+Jautājumu laikā var atvērt **iepriekšējo slaidu** (pēdējo skaidrojumu pirms jautājuma), lai pārlasītu tā tekstu, tabulas vai attēlus. Ar pogu **Atpakaļ** var atgriezties pie iepriekšējiem slaidiem: jau atbildētos jautājumus tad rāda pārskata režīmā. Ar pogu **Izlaist** jautājumu var atlikt līdz nodarbības beigām (simulācijā izlaist nevar, jo ieraksti ir atkarīgi cits no cita).
+
 Papildus ir **trenažieris** (nejauši izvēlēti uzdevumi no pabeigtajām nodarbībām) un **vārdnīca** ar meklēšanu. XP, dienu sērija un pabeigtās nodarbības glabājas pārlūka `localStorage`.
 
 ## Kā palaist
