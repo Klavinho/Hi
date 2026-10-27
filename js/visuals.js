@@ -214,7 +214,9 @@
 
   /* ---------- Svari ---------- */
   function scale(init, o = {}) {
-    const max = o.max || 20000;
+    // autoMax: mērogs aug līdzi lielākajai pusei, lai bloki nekad neiziet ārpus attēla.
+    const baseMax = o.max || 20000;
+    let max = baseMax;
     const CX = 180, CY = 146, R = 128, HMAX = 80;
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const el = document.createElement('div');
@@ -274,6 +276,7 @@
     }
 
     function set(v) {
+      if (o.autoMax) max = Math.max(baseMax, v.A, v.S + v.PK);
       stack(pl, [{ v: v.A, cls: 'blk-a', t: 'A' }]);
       stack(pr, [{ v: v.S, cls: 'blk-s', t: 'S' }, { v: v.PK, cls: 'blk-pk', t: 'PK' }]);
       el.querySelector('[data-k="A"]').textContent = eur(v.A);

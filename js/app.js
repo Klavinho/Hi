@@ -176,10 +176,13 @@
   function heroDemo() {
     const start = { A: 6000, S: 2000, PK: 4000 };
     const s = { ...start };
-    const CAP = 11000;
-    const sc = V.scale(s, { max: 14000 });
+    // Ierobežo katras svaru puses kopsummu, nevis katru lielumu atsevišķi,
+    // lai vienmēr varētu panākt līdzsvaru (piemēram, aktīvi 22 000 € pret 11 000 € + 11 000 €).
+    const LIMIT = 30000;
+    const room = (k) => (k === 'A' ? s.A : s.S + s.PK) + 1000 <= LIMIT;
+    const sc = V.scale(s, { max: 14000, autoMax: true });
     const status = h('p', { class: 'demo-status', 'aria-live': 'polite' });
-    const btn = (k, label, tone) => h('button', { class: `pill tone-${tone}`, type: 'button', onclick: () => { if (s[k] + 1000 > CAP) return; s[k] += 1000; update(); } }, h('i', { class: `sw sw-${tone}` }), label);
+    const btn = (k, label, tone) => h('button', { class: `pill tone-${tone}`, type: 'button', onclick: () => { if (!room(k)) return; s[k] += 1000; update(); } }, h('i', { class: `sw sw-${tone}` }), label);
     const addA = btn('A', '+1 000 € aktīvi', 'a');
     const addS = btn('S', '+1 000 € saistības', 's');
     const addP = btn('PK', '+1 000 € pašu kapitāls', 'pk');
@@ -190,9 +193,9 @@
       status.innerHTML = diff === 0
         ? '<b>Līdzsvarā.</b> Tā bilancei jāizskatās vienmēr.'
         : `<b>Nav līdzsvarā</b> par ${eur(Math.abs(diff))}. Īstā darījumā vienlaikus mainās divas vietas. Pievieno otru pusi.`;
-      addA.disabled = s.A + 1000 > CAP;
-      addS.disabled = s.S + 1000 > CAP;
-      addP.disabled = s.PK + 1000 > CAP;
+      addA.disabled = !room('A');
+      addS.disabled = !room('S');
+      addP.disabled = !room('PK');
     }
     const reset = h('button', { class: 'pill pill-ghost', type: 'button', onclick: () => { Object.assign(s, start); update(); } }, 'Sākt no jauna');
     update();
