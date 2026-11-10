@@ -265,6 +265,10 @@
     });
     $$('[data-search-close]', dialog).forEach(function (btn) { btn.addEventListener('click', function () { dialog.close(); }); });
     dialog.addEventListener('click', function (ev) { if (ev.target === dialog) dialog.close(); });
+    /* one Escape closes the dialog (a search field would otherwise only clear itself first) */
+    dialog.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') { ev.preventDefault(); dialog.close(); }
+    });
     doc.addEventListener('keydown', function (ev) {
       var tag = (ev.target.tagName || '').toLowerCase();
       var typing = tag === 'input' || tag === 'textarea' || tag === 'select' || ev.target.isContentEditable;
