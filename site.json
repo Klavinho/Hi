@@ -1,0 +1,199 @@
+{
+  "name": "Ventspils siltums",
+  "legalName": "Pašvaldības SIA „Ventspils siltums”",
+  "tagline": "Centralizētā siltumapgāde Ventspilī",
+  "description": "Pašvaldības SIA „Ventspils siltums” — siltumenerģijas ražošana un piegāde Ventspilī. Tarifs, norēķini, pieslēgums, avāriju pieteikšana un klientu apkalpošana.",
+  "assetBase": "https://ventspilssiltums.lv",
+  "origin": "https://ventspilssiltums.lv/lv",
+
+  "contacts": {
+    "address": "Talsu iela 84, Ventspils, LV-3602",
+    "mapUrl": "https://www.google.com/maps/search/?api=1&query=Talsu+iela+84%2C+Ventspils",
+    "regNo": "40003007655",
+    "eAddress": "https://latvija.gov.lv/KDV/Write/NewMessage?address=_default@40003007655",
+    "phone": "63602200",
+    "email": "vent.siltums@ventspils.lv",
+    "clientPhone": "63600800",
+    "clientEmail": "siltums.abonenti@ventspils.lv",
+    "clientOffices": "Pils ielā 12 un Talsu ielā 84",
+    "emergencyPhone": "63602240"
+  },
+
+  "facts": {
+    "hoursPage": "/klientu-pienemsanas-laiks",
+    "tariffPage": "/tarifs",
+    "emergencyPage": "/iedzivotajiem/siltumapgades-sistemas-bojajumi-vai-avarijas",
+    "contactsPage": "/par-mums/kontakti",
+    "newsPage": "/par-mums/jaunumi",
+    "mediaPage": "/video-foto"
+  },
+
+  "social": [
+    { "label": "Facebook", "url": "https://www.facebook.com/VentspilsSiltums" },
+    { "label": "X (Twitter)", "url": "https://www.twitter.com/VSiltums" }
+  ],
+
+  "nav": [
+    {
+      "path": "/iedzivotajiem", "icon": "house",
+      "intro": "Norēķini, līgumi, izziņas un atbildes uz biežāk uzdotajiem jautājumiem.",
+      "children": [
+        { "path": "/iedzivotajiem/informacija-par-norekiniem", "icon": "receipt-text" },
+        { "path": "/klientu-pienemsanas-laiks", "icon": "clock" },
+        { "path": "/iedzivotajiem/ligumi", "icon": "file-text" },
+        { "path": "/iedzivotajiem/izzinas-izsniegsana", "icon": "file-check" },
+        { "path": "/iedzivotajiem/siltumapgades-sistemas-bojajumi-vai-avarijas", "icon": "triangle-alert" },
+        { "path": "/iedzivotajiem/biezak-uzdotie-jautajumi", "icon": "circle-help" }
+      ]
+    },
+    {
+      "path": "/eku-parvaldniekiem", "icon": "building-2",
+      "intro": "Siltumenerģijas piegāde, tehniskie noteikumi un izziņas namu pārvaldniekiem.",
+      "children": [
+        { "path": "/eku-parvaldniekiem/siltumenergijas-piegade", "icon": "heater" },
+        { "path": "/eku-parvaldniekiem/siltumapgades-sistemu-pieslegsanas-tehnisko-noteikumu-izsniegsana", "icon": "clipboard-list" },
+        { "path": "/eku-parvaldniekiem/izzinu-izsniegsana", "icon": "file-check" }
+      ]
+    },
+    {
+      "path": "/jauniem-klientiem", "icon": "plug",
+      "intro": "Kā pieslēgties centralizētajai siltumapgādei un kādi dokumenti nepieciešami.",
+      "children": [
+        { "path": "/jauniem-klientiem/centralizeta-siltumapgade-erti-drosi-ilgtspejigi", "icon": "shield-check" },
+        { "path": "/jauniem-klientiem/piesleguma-pieteiksana-dokumentu-iesniegsana-izsniegsana", "icon": "plug" },
+        { "path": "/jauniem-klientiem/siltumenergijas-piegade", "icon": "heater" }
+      ]
+    },
+    {
+      "path": "/pakalpojumi", "icon": "hand-helping",
+      "intro": "Ēku siltumenerģijas patēriņa dati un dokumentu iesniegšana.",
+      "children": [
+        { "path": "/pakalpojumi/informacija-par-eku-siltumenergijas-paterinu", "icon": "chart-column" },
+        { "path": "/pakalpojumi/dokumentu-iesniegsana-izsniegsana", "icon": "folder-open" }
+      ]
+    },
+    {
+      "path": "/tarifs", "icon": "coins",
+      "intro": "Spēkā esošais siltumenerģijas tarifs, tā vēsture un izmaksu struktūra.",
+      "children": [
+        { "path": "/tarifs/regulesanas-komisijas-lemumi", "icon": "gavel" },
+        { "path": "/tarifs/tarifu-izmaksu-struktura", "icon": "scale" }
+      ]
+    },
+    {
+      "label": "Par uzņēmumu", "icon": "factory", "mega": true,
+      "groups": [
+        {
+          "path": "/par-mums", "icon": "factory",
+          "children": [
+            { "path": "/par-mums/jaunumi", "label": "Jaunumi" },
+            { "path": "/par-mums/kontakti" },
+            { "path": "/par-mums/valde" },
+            { "path": "/par-mums/padome" },
+            { "path": "/par-mums/parvaldes-struktura" },
+            { "path": "/par-mums/statuti" },
+            { "path": "/par-mums/strategija" },
+            { "path": "/par-mums/parskati" },
+            { "path": "/par-mums/pazinojumi" },
+            { "path": "/par-mums/vakances" },
+            { "path": "/par-mums/izsoles" },
+            { "path": "/par-mums/privatuma-politika" },
+            { "path": "/video-foto", "label": "Foto un video" }
+          ]
+        },
+        {
+          "path": "/projekti", "icon": "target",
+          "children": [
+            { "path": "/projekti/viegli-lasit" },
+            { "path": "/projekti/katlumaju-rekonstrukcijas-projekti" },
+            { "path": "/projekti/attalinatas-datu-nolasisanas-sistema-siltumskaititajiem", "label": "Attālinātās datu nolasīšanas sistēma" },
+            { "path": "/projekti/dumgazu-kondensatoru-uzstadisana" },
+            { "path": "/projekti/siltumtrasu-rekonstrukcijas-projekti" },
+            { "path": "/projekti/siltumtrasu-buvnieciba" }
+          ]
+        },
+        {
+          "path": "/vides-politika", "icon": "leaf",
+          "children": [
+            { "path": "/vides-politika/energoefektivitate" },
+            { "path": "/vides-politika/gaisa-piesarnojoso-vielu-emisiju-samazinasana-siltumapgade", "label": "Gaisa piesārņojošo vielu emisiju samazināšana" },
+            { "path": "/vides-politika/sabiedriskas-apspriesanas" }
+          ]
+        },
+        {
+          "path": "/normativie-akti", "icon": "landmark",
+          "children": [
+            { "path": "/normativie-akti/likumi" },
+            { "path": "/normativie-akti/mk-noteikumi" }
+          ]
+        },
+        {
+          "path": "/pamatprincipi-un-standarti/pamatprincipi-un-standarti", "icon": "scroll-text",
+          "children": [
+            { "path": "/pamatprincipi-un-standarti/klientu-apkalposanas-standarts" },
+            { "path": "/pamatprincipi-un-standarti/etikas-kodekss" },
+            { "path": "/pamatprincipi-un-standarti/trauksmes-celsana" },
+            { "path": "/pamatprincipi-un-standarti/risku-parvaldibas-politika" },
+            { "path": "/pamatprincipi-un-standarti/darbinieku-atlidzibas-noteiksanas-vadlinijas" },
+            { "path": "/pamatprincipi-un-standarti/socialo-garantiju-piemaksu-noteiksanas-kriteriji" },
+            { "path": "/pamatprincipi-un-standarti/ziedosanas-davinasanas-kartiba-un-strategija" }
+          ]
+        },
+        {
+          "path": "/iepirkumi", "icon": "briefcase",
+          "children": []
+        }
+      ]
+    }
+  ],
+
+  "utility": [
+    { "path": "/par-mums/jaunumi", "label": "Jaunumi" },
+    { "path": "/iepirkumi", "label": "Iepirkumi" },
+    { "path": "/par-mums/vakances", "label": "Vakances" },
+    { "path": "/par-mums/kontakti", "label": "Kontakti" }
+  ],
+
+  "homeTasks": [
+    { "path": "/iedzivotajiem/informacija-par-norekiniem", "icon": "receipt-text", "label": "Norēķini un rēķinu apmaksa", "text": "Norēķinu konti, PVN likmes un maksa par karsto ūdeni." },
+    { "path": "/klientu-pienemsanas-laiks", "icon": "clock", "label": "Klientu pieņemšanas laiks", "text": "Klientu daļu un kases darba laiks Pils ielā 12 un Talsu ielā 84." },
+    { "path": "/iedzivotajiem/siltumapgades-sistemas-bojajumi-vai-avarijas", "icon": "triangle-alert", "label": "Bojājumi vai avārijas", "text": "Kur zvanīt, ja nav apkures vai redzama karstā ūdens noplūde." },
+    { "path": "/iedzivotajiem/biezak-uzdotie-jautajumi", "icon": "circle-help", "label": "Biežāk uzdotie jautājumi", "text": "Apkures pieslēgšana, maksas aprēķins, temperatūra dzīvoklī." },
+    { "path": "/jauniem-klientiem/piesleguma-pieteiksana-dokumentu-iesniegsana-izsniegsana", "icon": "plug", "label": "Pieslēgties siltumapgādei", "text": "Pieslēguma pieteikšana un nepieciešamie dokumenti." },
+    { "path": "/iedzivotajiem/izzinas-izsniegsana", "icon": "file-check", "label": "Saņemt izziņu", "text": "Izziņa par parāda neesamību vai tā apmēru — līdz 7 darba dienām." }
+  ],
+
+  "homeStats": [
+    { "value": "55+ km", "label": "ārējo siltumtīklu kopgarums" },
+    { "value": "100 %", "label": "siltumtrašu rekonstruētas ar rūpnieciski izolētām caurulēm" },
+    { "value": "2 + 2", "label": "centrālās un lokālās katlu mājas" },
+    { "value": "Šķelda", "label": "galvenais kurināmais siltuma ražošanā" }
+  ],
+  "homeAbout": "Uzņēmuma galvenais uzdevums — nodrošināt videi draudzīgu un efektīvu siltumenerģijas ražošanu un piegādi, kā arī nepārtrauktu un ilgtspējīgu pakalpojumu Ventspils iedzīvotājiem, kuri izvēlējušies centralizētās siltumapgādes pieslēgumu.",
+
+  "indexable": false,
+  "previewNotice": true,
+  "basePath": "/",
+
+  "searchHints": ["tarifs", "norēķini", "darba laiks", "avārija", "līgums", "izziņa", "pieslēgums"],
+
+  "procurementArchive": [
+    "/iepirkumi", "/iepirkumi-2025-gads", "/iepirkumi-2024-gads", "/iepirkumi-2023-gads", "/iepirkumi-2022-gads",
+    "/iepirkumi-2021-gads", "/iepirkumi-2020-gads", "/iepirkumi-2019-gads", "/iepirkumi-2018-gads",
+    "/iepirkumi-2017-gads", "/iepirkumi-2016-gads", "/iepirkumi-2015-gads"
+  ],
+
+  "unlisted": [
+    "/iedzivotajiem/apkures-pieslegsana",
+    "/iedzivotajiem/kas-ir-maksa-par-siltumcirkulaciju",
+    "/iedzivotajiem/palidziba-maznodrosinatajiem",
+    "/iedzivotajiem/klientu-pienemsanas-laiks",
+    "/uznemuma-ventspils-siltums-abonentu-dala-parcelas-atpakal-uz-pils-ielu-12",
+    "/ru/ustranenie-avariy-i-povrezhdeniy",
+    "/remonti",
+    "/remonti/laika-grafiki",
+    "/pakalpojumi/noderiga-informacija",
+    "/video-foto/fotomateriali/dazadi-foto",
+    "/video-foto/fotomateriali/investiciju-projekti"
+  ]
+}
