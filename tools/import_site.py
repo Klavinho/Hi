@@ -269,6 +269,13 @@ class Cleaner:
                     el.unwrap()
                     continue
                 el['href'] = self.link(el['href'])
+                href = el['href'].strip()
+                if href.startswith('tel:'):
+                    href = 'tel:' + re.sub(r'[^\d+]', '', href[4:])
+                elif not re.match(r'^(/|#|mailto:|https?://)', href):
+                    el.unwrap()  # broken link in the source (e.g. plain text pasted into the URL field)
+                    continue
+                el['href'] = href.replace(' ', '%20')
                 if el['href'].startswith(('http://', 'https://')):
                     el['rel'] = 'noopener'
                     el['target'] = '_blank'

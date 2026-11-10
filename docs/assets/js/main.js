@@ -39,7 +39,8 @@
 
   /* ---------------------------------------------------------------- navigation */
   var header = $('.site-header'), nav = $('#nav'), menuBtn = $('.menu-btn');
-  var desktop = window.matchMedia('(min-width: 72em)');
+  /* CSS decides (container query) when the full menu fits; here we only read the result */
+  var desktop = { get matches() { return !menuBtn || getComputedStyle(menuBtn).display === 'none'; } };
   var items = $$('.nav-item');
   var hoverTimer;
 
@@ -103,7 +104,13 @@
     }
   }
   if (menuBtn) menuBtn.addEventListener('click', function () { setMenu(!html.classList.contains('nav-open')); });
-  desktop.addEventListener('change', function () { setMenu(false); });
+  var wasDesktop = desktop.matches;
+  function syncMode() {
+    var now = desktop.matches;
+    if (now !== wasDesktop) { wasDesktop = now; setMenu(false); }
+  }
+  window.addEventListener('resize', syncMode);
+  if (sizeBtn) sizeBtn.addEventListener('click', function () { setTimeout(syncMode, 0); });
 
   doc.addEventListener('keydown', function (ev) {
     if (ev.key === 'Escape') {
