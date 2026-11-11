@@ -559,6 +559,8 @@ class Builder:
 <p class="eyebrow">{e(self.cfg["legalName"])}</p>
 <h1>Siltums Ventspils mājām</h1>
 <p class="hero-lead">Centralizētā siltumapgāde — ērti, droši, ilgtspējīgi. Šeit atradīsiet tarifu, norēķinu kārtību, pieslēguma nosacījumus un kontaktus.</p>
+</div>
+<div class="hero-find">
 <form class="hero-search" action="{e(s.rel(cur, "/meklet"))}" method="get" role="search" data-search-proxy>
 <label class="sr-only" for="hero-q">Meklēt vietnē</label>
 {icon("search")}<input id="hero-q" type="search" name="q" placeholder="Ko vēlaties atrast?" autocomplete="off">
@@ -566,12 +568,13 @@ class Builder:
 </form>
 <p class="hero-hints"><span>Bieži meklē:</span>{hints}</p>
 </div>
-<div class="hero-cards">{tariff}{alert}</div>
 </div></section>'''
 
+        # The tariff and emergency cards open the quick-access section, so the news can sit directly under the hero.
         tasks = ''.join(self.link_card(cur, t['path'], t['label'], t['text'], t['icon']) for t in self.cfg['homeTasks'])
         tasks = f'''<section class="section"><div class="container">
 <div class="section-head"><h2>Ātrā piekļuve</h2><p>Svarīgākā informācija ikdienas jautājumos — viena klikšķa attālumā.</p></div>
+<div class="key-cards">{tariff}{alert}</div>
 <ul class="task-grid">{tasks}</ul>
 </div></section>'''
 
@@ -622,7 +625,7 @@ class Builder:
 <div class="hours-card"><h3>{icon("clock")}Klientu daļas un kases darba laiks</h3>{self.hours_table()}</div>
 </div></section>'''
 
-        main = hero + tasks + audiences + news + about + contact
+        main = hero + news + tasks + audiences + about + contact
         self.write(cur, self.layout(cur, f'{self.cfg["name"]} — {self.cfg["tagline"]}', main,
                                     canonical=s.origin, body_class='home'))
 
@@ -638,7 +641,8 @@ class Builder:
         area = f'{pad},{h} ' + line + f' {w - pad},{h}'
         lx, ly = pts[-1]
         return (f'<svg class="spark" viewBox="0 0 {w} {h}" preserveAspectRatio="none" aria-hidden="true">'
-                f'<polygon points="{area}"/><polyline points="{line}"/><circle cx="{lx:.1f}" cy="{ly:.1f}" r="3.5"/></svg>')
+                # the end marker is a near-zero-length round-capped stroke, so it stays a circle however the chart is stretched
+                f'<polygon points="{area}"/><polyline points="{line}"/><path d="M{lx:.1f} {ly:.1f}h.01"/></svg>')
 
     def standard(self, page):
         s, cur = self.s, page.path

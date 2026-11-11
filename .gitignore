@@ -3,3 +3,10 @@ __pycache__/
 *.pyc
 node_modules/
 .DS_Store
+
+# Impeccable (design skill in .claude/skills/impeccable)
+# The engine binary is platform-specific (23 MB); the launcher downloads and verifies it on first use.
+.claude/skills/impeccable/scripts/bin/
+# Per-developer settings: Claude Code hooks and Impeccable's local config stay on each machine.
+.claude/settings.local.json
+.impeccable/config.local.json
