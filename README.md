@@ -27,7 +27,7 @@ ieslēgt GitHub Pages (Settings → Pages → šis zars, mape `/docs`).
 | Meklēšanas lauks bez ieteikumiem | Tūlītēja meklēšana visā vietnē (taustiņš `/`), atrod arī bez garumzīmēm („avarija”) |
 | Jaunumi pa 10 lapā, 64 lapas | Jaunumu arhīvs ar meklēšanu un gada filtru |
 | Virsraksti un saites LIELIEM BURTIEM, teksts izlīdzināts abās malās | Parasta rakstība, kreisā mala, lasāms rindas garums |
-| Dokumentu saites tekstā ar bildītēm | Dokumentu saraksti ar faila tipu (PDF, DOC, XLS) un izmēru |
+| Dokumentu saites tekstā ar bildītēm | Dokumentu saites un saraksti kā teksts, bez bildītēm un faila tipa zīmītēm |
 | Tālruņa numuri kā teksts | Visi tālruņa numuri ir zvanāmas saites |
 | Kontakti vienā lielā tabulā | Kontaktu kartītes (Klientu daļa ar darba laiku, administrācija, avārijas) un pilnā tabula zem tām |
 | Iepirkumu tabulas telefonā jāritina sāniski | Telefonā tabulas rindas pārkārtojas par kartītēm |
