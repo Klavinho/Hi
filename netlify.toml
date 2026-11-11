@@ -1,0 +1,15 @@
+# Netlify: publicē jau uzbūvēto vietni no mapes docs/ (būvēšanas solis nav vajadzīgs).
+[build]
+  publish = "docs"
+
+# Priekšskatījums nav paredzēts meklētājprogrammām. Izdzēs šo bloku, kad vietne tiek palaista īstajā adresē.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
+# CSS un JS adresēs ir versijas numurs (?v=…), tāpēc tos var droši kešot ilgi.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
