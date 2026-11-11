@@ -349,13 +349,18 @@ a:hover .more .i, a.more:hover .i { transform: translateX(3px); }
 @media (min-width: 40em) { .news-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 64em) { .news-grid { grid-template-columns: repeat(3, 1fr); } }
 
-.hours { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.hours th, .hours td { padding: .6rem 0; border-bottom: 1px solid var(--line); text-align: left; font-weight: 500; }
-.hours td { text-align: right; }
-.hours td span { display: inline-block; white-space: nowrap; }
-.hours td span + span { margin-left: .6rem; }
+/* rows are wrapping flex lines: when a day and its times do not fit side by side, the times drop under the day */
+.hours { display: block; width: 100%; font-variant-numeric: tabular-nums; container-type: inline-size; }
+.hours tbody { display: block; }
+.hours tr { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .2rem 1rem; padding: .6rem 0; border-bottom: 1px solid var(--line); }
+.hours th, .hours td { padding: 0; text-align: left; font-weight: 500; }
+.hours th { white-space: nowrap; }
+.hours td { display: flex; flex-wrap: wrap; gap: .1rem .6rem; }
+.hours td span { white-space: nowrap; }
+/* too narrow for the longest day with the "šodien" mark: stack every row, so the table stays even */
+@container (max-width: 26rem) { .hours th { flex-basis: 100%; } }
 .contact-cards > *, .hours-card { min-width: 0; overflow-wrap: anywhere; }
-.hours tr:last-child th, .hours tr:last-child td { border-bottom: 0; }
+.hours tr:last-child { border-bottom: 0; }
 .hours tr.today th, .hours tr.today td { font-weight: 800; color: var(--brand-strong); }
 .hours tr.today th::after, .prose td[data-today]::after { content: "šodien"; margin-left: .5rem; padding: .08rem .5rem; border-radius: 999px;
   background: var(--brand); color: var(--on-brand); font-size: .68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; vertical-align: .12em; }
