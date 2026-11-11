@@ -523,9 +523,10 @@ class Builder:
                 f'<span class="task-text">{e(text)}</span></span>{icon("arrow-right", "task-arrow")}</a></li>')
 
     def hours_table(self):
-        rows = ''.join(f'<tr data-day="{e(r["day"].lower())}"><th scope="row">{e(r["day"])}</th>'
-                       f'<td>{" ".join("<span>" + e(t) + "</span>" for t in r["times"])}</td></tr>' for r in self.s.hours)
-        return f'<table class="hours">{rows}</table>' if rows else ''
+        # the rows are laid out with flexbox so they can wrap; the roles keep the table semantics for screen readers
+        rows = ''.join(f'<tr role="row" data-day="{e(r["day"].lower())}"><th scope="row" role="rowheader">{e(r["day"])}</th>'
+                       f'<td role="cell">{" ".join("<span>" + e(t) + "</span>" for t in r["times"])}</td></tr>' for r in self.s.hours)
+        return f'<table class="hours" role="table"><tbody role="rowgroup">{rows}</tbody></table>' if rows else ''
 
     def index(self, page, section):
         self.search.append([page.title, self.s.file(page.path), section, page.text])
