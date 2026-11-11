@@ -50,6 +50,7 @@ src/icons/           ikonas (SVG)
 src/fonts/, src/img/ fonts Figtree, logotipa zīme
 tools/import_site.py satura imports no ventspilssiltums.lv
 tools/build.py       ģenerators: content/ + src/ + site.json → docs/
+tools/qa/            pārbaudes: saites, uzvedība, ekrāna platumi, ekrānuzņēmumi
 docs/                uzbūvētā vietne
 preview/             ekrānuzņēmumi
 ```
@@ -79,6 +80,30 @@ python3 tools/build.py
 
 Imports nolasa visas lapas no vietnes kartes, notīra Drupal marķējumu un pārraksta mapi `content/` — ar roku
 veiktas izmaiņas tajā tiek aizstātas.
+
+### Pārbaudes
+
+Pēc izmaiņām dizainā vai skriptos vērts palaist trīs pārbaudes (vajadzīgs Node.js ar Playwright):
+
+```sh
+python3 -m http.server 8000 --directory docs &
+python3 tools/qa/linkcheck.py   # bojātas iekšējās saites un atkārtoti id
+node tools/qa/behave.js         # tastatūra, meklēšana, filtri, mobilā izvēlne, darbība bez JavaScript
+node tools/qa/widths.js         # sāniska ritināšana 11 ekrāna platumos (320–1920 px)
+```
+
+`tools/qa/shots.js` uzņem ekrānuzņēmumus pēc saraksta JSON failā.
+
+### Dizaina rīks Impeccable
+
+Mapē `.claude/` ir [Impeccable](https://impeccable.style) — dizaina prasme Claude Code (komandas
+`/impeccable critique`, `polish`, `audit` u. c.). Tā neietekmē pašu vietni. Rīka dzinējs (23 MB) repozitorijā
+nav iekļauts: palaidējs to pirmajā reizē lejupielādē no projekta GitHub laidieniem un pārbauda kontrolsummu.
+Dizaina pārbaudi var palaist arī ar roku:
+
+```sh
+.claude/skills/impeccable/scripts/impeccable detect http://localhost:8000/index.html
+```
 
 ## Kas jāzina pirms palaišanas
 
