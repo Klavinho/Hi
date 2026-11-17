@@ -25,7 +25,12 @@
     "emergencyPage": "/iedzivotajiem/siltumapgades-sistemas-bojajumi-vai-avarijas",
     "contactsPage": "/par-mums/kontakti",
     "newsPage": "/par-mums/jaunumi",
-    "mediaPage": "/video-foto"
+    "mediaPage": "/video-foto",
+    "noticesPage": "/remonti",
+    "thanksPage": "/pieteikums-nosutits",
+    "accessibilityPage": "/pieklustamibas-pazinojums",
+    "easyReadPage": "/viegli-lasit",
+    "privacyPage": "/par-mums/privatuma-politika"
   },
 
   "social": [
@@ -43,6 +48,9 @@
         { "path": "/iedzivotajiem/ligumi", "icon": "file-text" },
         { "path": "/iedzivotajiem/izzinas-izsniegsana", "icon": "file-check" },
         { "path": "/iedzivotajiem/siltumapgades-sistemas-bojajumi-vai-avarijas", "icon": "triangle-alert" },
+        { "path": "/remonti", "icon": "wrench" },
+        { "path": "/iedzivotajiem/zinot-par-bojajumu", "icon": "megaphone" },
+        { "path": "/iedzivotajiem/e-rekins", "icon": "mail" },
         { "path": "/iedzivotajiem/biezak-uzdotie-jautajumi", "icon": "circle-help" }
       ]
     },
@@ -151,7 +159,8 @@
     { "path": "/par-mums/jaunumi", "label": "Jaunumi" },
     { "path": "/iepirkumi", "label": "Iepirkumi" },
     { "path": "/par-mums/vakances", "label": "Vakances" },
-    { "path": "/par-mums/kontakti", "label": "Kontakti" }
+    { "path": "/par-mums/kontakti", "label": "Kontakti" },
+    { "path": "/viegli-lasit", "label": "Viegli lasīt" }
   ],
 
   "homeTasks": [
@@ -170,6 +179,14 @@
     { "value": "Šķelda", "label": "galvenais kurināmais siltuma ražošanā" }
   ],
   "homeAbout": "Uzņēmuma galvenais uzdevums — nodrošināt videi draudzīgu un efektīvu siltumenerģijas ražošanu un piegādi, kā arī nepārtrauktu un ilgtspējīgu pakalpojumu Ventspils iedzīvotājiem, kuri izvēlējušies centralizētās siltumapgādes pieslēgumu.",
+
+  "titleOverrides": {
+    "/projekti/viegli-lasit": "Eiropas Savienības līdzfinansētie projekti"
+  },
+
+  "noticesExclude": [],
+
+  "analytics": { "plausibleDomain": "", "src": "https://plausible.io/js/script.js" },
 
   "indexable": false,
   "previewNotice": true,
@@ -190,7 +207,6 @@
     "/iedzivotajiem/klientu-pienemsanas-laiks",
     "/uznemuma-ventspils-siltums-abonentu-dala-parcelas-atpakal-uz-pils-ielu-12",
     "/ru/ustranenie-avariy-i-povrezhdeniy",
-    "/remonti",
     "/remonti/laika-grafiki",
     "/pakalpojumi/noderiga-informacija",
     "/video-foto/fotomateriali/dazadi-foto",

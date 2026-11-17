@@ -41,6 +41,9 @@ Apstiprināti ierobežojumi:
 - Viss esošais saturs paliek pieejams (783 importētas lapas un dokumenti); teksti netiek pārrakstīti bez saskaņošanas.
 - Tikai latviešu valoda; citas valodu versijas pagaidām nav vajadzīgas.
 - Lapā ir meklēšana, izvēlne pa auditorijām, sākumlapas ātrās darbības un kontaktu/avārijas tālruņi (`site.json`).
+- Lapa „Pārtraukumi un remontdarbi” apkopo paziņojumus no jaunumiem automātiski; sākumlapā ir josla ar jaunāko paziņojumu.
+- Tiešsaistes veidlapas: rēķina pieteikšana e-pastā (esošs pakalpojums, līdz šim tikai pa e-pastu vai tālruni) un ziņojums par bojājumu, kas nav steidzams. Avārijas joprojām tikai pa tālruni 636 02 240.
+- Apmeklējumu statistika bez sīkdatnēm ir sagatavota, bet izslēgta, līdz uzņēmums izvēlas rīku.
 
 Vēl neizlemts vai gaida uzņēmuma apstiprinājumu:
 
@@ -48,6 +51,10 @@ Vēl neizlemts vai gaida uzņēmuma apstiprinājumu:
 - VISI LIELIE BURTI virsrakstos automātiski pārvērsti parastā rakstībā; juridiskās lapas jāpārlasa.
 - Attēli un dokumenti tiek ielādēti no ventspilssiltums.lv (`assetBase`); nav izlemts, vai tos pārcelt.
 - Nav zināms, vai un kad pārbūve aizstās esošo vietni un kur tā tiks izvietota.
+- Kur nonāk veidlapu pieteikumi (Netlify Forms vai uzņēmuma sistēma) un kas tos apstrādā; privātuma politika jāpapildina.
+- Piekļūstamības paziņojuma atbildīgā persona un sūdzību kārtība; „Viegli lasīt” teksta apstiprināšana.
+- Zīmola krāsa: vietnē `#b93414`, esošajā vietnē `#d2232a` (pretrunā ar apņemšanos saglabāt krāsas) — jāsaskaņo.
+- Galvenie lietotāju uzdevumi vēl nav pārbaudīti ar lietotājiem; ieteikta neliela aptauja (~30 atbildes) un lietojamības tests ar 5 cilvēkiem.
 
 ## Brand Commitments
 
@@ -71,4 +78,4 @@ Vēl neizlemts vai gaida uzņēmuma apstiprinājumu:
 
 ## Accessibility & Inclusion
 
-Lapai jāatbilst valsts un pašvaldību iestāžu tīmekļvietņu piekļūstamības prasībām — WCAG 2.1 AA (apstiprināts).
+Lapai jāatbilst valsts un pašvaldību iestāžu tīmekļvietņu piekļūstamības prasībām — WCAG 2.1 AA (apstiprināts). Mērķis ir WCAG 2.2 AA, kā ieteikts 2026. gada novembra pētījuma ziņojumā par vietnes pārbūvi; ir piekļūstamības paziņojums (MK noteikumi Nr. 445).
