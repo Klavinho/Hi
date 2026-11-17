@@ -99,6 +99,49 @@ const check = (name, ok, detail) => results.push({ name, ok: !!ok, detail });
     return !!t && getComputedStyle(t.querySelector('tbody td')).display === 'grid'; }));
   await context.close();
 
+  // ---- service pages added after the research review: notices, forms, accessibility statement
+  context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  page = await context.newPage();
+  await page.goto(BASE + '/index.html');
+  const band = await page.evaluate(() => { const a = document.querySelector('.notice-band .more'); return a && a.getAttribute('href'); });
+  check('home page links to interruptions and works', band === 'remonti.html', band);
+  const footer = await page.evaluate(() => [...document.querySelectorAll('.site-footer a')].map((a) => a.getAttribute('href')));
+  check('footer links to the accessibility statement and easy-read page',
+    footer.includes('pieklustamibas-pazinojums.html') && footer.includes('viegli-lasit.html'), footer.length + ' links');
+  check('structured data names the emergency line', await page.evaluate(() => {
+    const d = JSON.parse(document.querySelector('script[type="application/ld+json"]').textContent);
+    return d.contactPoint.some((c) => c.contactType === 'emergency' && /63602240/.test(c.telephone)); }));
+  await page.goto(BASE + '/remonti.html');
+  check('interruptions page lists notices by year', await page.evaluate(() => document.querySelectorAll('.notice-year').length > 3
+    && document.querySelectorAll('.notice-guide .alert-phone').length === 1));
+  for (const form of ['iedzivotajiem/e-rekins.html', 'iedzivotajiem/zinot-par-bojajumu.html']) {
+    await page.goto(BASE + '/' + form);
+    const f = await page.evaluate(() => {
+      const el = document.querySelector('form.form');
+      const fields = [...el.querySelectorAll('input:not([type=hidden]):not([name=bot-field]), textarea')];
+      return { netlify: el.hasAttribute('data-netlify') && !!el.querySelector('input[name=form-name]'),
+        labelled: fields.every((x) => x.labels && x.labels.length === 1),
+        consent: el.querySelector('#piekrisana').required };
+    });
+    check(`${form}: every field has a label, consent is required, Netlify can read it`, f.netlify && f.labelled && f.consent, JSON.stringify(f));
+    await page.click('form.form button[type=submit]');
+    check(`${form}: an empty form is not sent`, page.url().endsWith(form));
+  }
+  // WCAG 2.4.11: the sticky header must not cover the focused element
+  await page.goto(BASE + '/remonti.html');
+  let covered = 0;
+  for (let i = 0; i < 40; i++) {
+    await page.keyboard.press('Tab');
+    covered += await page.evaluate(() => {
+      const el = document.activeElement; if (!el || el === document.body || el.closest('.site-header, .topbar, .preview-note, .skip')) return 0;
+      const r = el.getBoundingClientRect(), h = document.querySelector('.site-header').getBoundingClientRect();
+      // only a header stuck to the top of the viewport can hide anything; count a stop when it is entirely behind it
+      return h.top <= 0 && r.top < h.bottom && r.bottom <= h.bottom ? 1 : 0;
+    });
+  }
+  check('keyboard focus is never hidden under the sticky header', covered === 0, covered + ' of 40 stops covered');
+  await context.close();
+
   // ---- JavaScript disabled
   for (const width of [1440, 390]) {
     context = await browser.newContext({ viewport: { width, height: 900 }, javaScriptEnabled: false });

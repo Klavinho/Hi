@@ -24,6 +24,20 @@ MONTHS = ['janvāris', 'februāris', 'marts', 'aprīlis', 'maijs', 'jūnijs', 'j
 FILE_EXT = re.compile(r'\.(pdf|docx?|xlsx?|pptx?|zip|rar|7z|edoc|asice|odt|ods|rtf|txt|csv|jpe?g|png)(?:$|[?#])', re.I)
 e = html.escape
 
+# News titles that announce interruptions of hot water or heat supply, repairs or accidents
+NOTICE = re.compile(r'nebūs (?:karst|kārst)|(?:karstā|kārstā|siltuma|siltumenerģijas) (?:ūdens )?(?:padeve|piegāde|padevi|piegādi)'
+                    r'|(?:padeves|piegādes) pārtraukum|atslēg|pārtraukt\w* (?:karst|kārst|siltum)|remontdarb|remonts\b|remonti\b'
+                    r'|avārij|ūdens padeve atjaunot|piegāde atjaunot', re.I)
+# News titles about the start or end of the heating season
+SEASON = re.compile(r'apkures sezon\w* (?:tuvojas|sākusies|noslēg\w*|uzsāk\w*)|(?:sākusies|tuvojas|noslēgusies|uzsāks?)\w* '
+                    r'(?:jaun\w* )?apkures sezon|apkures sezonas (?:noslēgum|uzsākšan)|gatav\w* apkures sezon'
+                    r'|apkures sezonai (?:gatavi|jāgatavojas)', re.I)
+# Online forms. They post to Netlify Forms (see README); "name" is the form name shown in the Netlify dashboard.
+FORMS = [
+    {'path': '/iedzivotajiem/e-rekins', 'name': 'e-rekins', 'title': 'Pieteikt rēķinu e-pastā'},
+    {'path': '/iedzivotajiem/zinot-par-bojajumu', 'name': 'bojajums', 'title': 'Ziņot par bojājumu'},
+]
+
 
 # ------------------------------------------------------------------ content
 
@@ -75,6 +89,13 @@ def fmt_date(iso):
     return f'{d.year}. gada {d.day}. {MONTHS[d.month - 1]}'
 
 
+def fmt_short(iso):
+    try:
+        return datetime.date.fromisoformat(iso).strftime('%d.%m.%Y.')
+    except ValueError:
+        return iso
+
+
 def fmt_phone(digits):
     digits = re.sub(r'\D', '', digits)
     return f'{digits[:3]} {digits[3:5]} {digits[5:]}' if len(digits) == 8 else digits
@@ -86,6 +107,11 @@ class Site:
     def __init__(self, out):
         self.cfg = json.loads((ROOT / 'site.json').read_text(encoding='utf-8'))
         self.pages = load_content(ROOT / 'content')
+        # pages/ holds pages written for this site (not imported), so a re-import of content/ never touches them
+        self.pages.update(load_content(ROOT / 'pages'))
+        for path, title in self.cfg.get('titleOverrides', {}).items():
+            if path in self.pages:
+                self.pages[path].title = title
         self.out = out
         self.asset = self.cfg['assetBase'].rstrip('/')
         self.origin = self.cfg['origin'].rstrip('/')
@@ -99,8 +125,12 @@ class Site:
                                 key=lambda p: p.meta.get('order', 999))
         self.videos = sorted((p for p in self.pages.values() if p.type == 'video'),
                              key=lambda p: p.meta.get('order', 999))
+        self.notices, self.season = self._notices()
         self.virtual = {'/': 'Sākumlapa', self.facts['newsPage']: 'Jaunumi',
-                        self.facts['mediaPage']: 'Foto un video', '/meklet': 'Meklēšana'}
+                        self.facts['mediaPage']: 'Foto un video', '/meklet': 'Meklēšana',
+                        self.facts['noticesPage']: 'Pārtraukumi un remontdarbi',
+                        self.facts['thanksPage']: 'Paldies par pieteikumu'}
+        self.virtual.update({f['path']: f['title'] for f in FORMS})
         self.built = set(self.pages) | set(self.virtual)
 
         self._nav()
@@ -108,11 +138,28 @@ class Site:
         self.hours = self._hours()
         self.version = ''
 
+    def _notices(self):
+        """News items that announce supply interruptions or works, and those about the heating season.
+        An article can opt in or out with "notice": true/false in its front matter; site.json can exclude paths."""
+        exclude = set(self.cfg.get('noticesExclude', []))
+        notices, season = [], []
+        for p in self.news:
+            flag = p.meta.get('notice')
+            if p.path in exclude or flag is False:
+                continue
+            if flag is True or NOTICE.search(p.title):
+                notices.append(p)
+            elif SEASON.search(p.title):
+                season.append(p)
+        return notices, season
+
     # -- navigation -------------------------------------------------------
     def title(self, path, label=None):
         if label:
             return label
-        if path in self.pages:
+        if path in self.virtual and path not in self.pages:
+            return self.virtual[path]
+        if path in self.pages and path != self.facts['noticesPage']:
             return self.pages[path].title
         return self.virtual.get(path, path)
 
@@ -286,7 +333,7 @@ class Builder:
                 f'<span>{e(top["title"])}</span>{icon("chevron-down")}</a>'
                 f'<div class="nav-panel" id="{pid}">{panel}</div></li>')
         extra = ''.join(f'<li><a href="{e(s.rel(cur, u["path"]))}">{e(u["label"])}</a></li>'
-                        for u in self.cfg['utility'])
+                        for u in [{'path': s.facts['noticesPage'], 'label': 'Pārtraukumi un remontdarbi'}] + self.cfg['utility'])
         return (f'<nav class="nav" id="nav" aria-label="Galvenā izvēlne"><ul class="nav-list">{"".join(items)}</ul>'
                 f'<ul class="nav-extra">{extra}</ul></nav>')
 
@@ -310,7 +357,7 @@ class Builder:
                       f'<a href="{e(s.origin)}">{e(re.sub(r"^https?://", "", s.origin))}</a></div></div>')
         return f'''<a class="skip" href="#saturs">Pāriet uz saturu</a>
 {notice}<div class="topbar"><div class="container topbar-in">
-<p class="topbar-alert">{icon("triangle-alert")}<a href="{e(s.rel(cur, s.facts["emergencyPage"]))}">Siltumtrašu avārijas</a><a class="topbar-phone" href="tel:+371{c["emergencyPhone"]}">{fmt_phone(c["emergencyPhone"])}</a></p>
+<p class="topbar-alert">{icon("triangle-alert")}<a href="{e(s.rel(cur, s.facts["emergencyPage"]))}">Siltumtrašu avārijas</a><a class="topbar-phone" href="tel:+371{c["emergencyPhone"]}">{fmt_phone(c["emergencyPhone"])}</a><a class="topbar-notices" href="{e(s.rel(cur, s.facts["noticesPage"]))}"{self._cur(cur, s.facts["noticesPage"])}>{icon("wrench")}<span>Pārtraukumi<span class="topbar-more"> un remontdarbi</span></span></a></p>
 <ul class="topbar-links">{util}</ul>
 <div class="topbar-tools">
 <button type="button" class="tool" data-text-size aria-label="Mainīt teksta izmēru" title="Teksta izmērs">{icon("a-large-small")}</button>
@@ -321,7 +368,7 @@ class Builder:
 {self.nav_html(cur)}
 <div class="header-actions">
 <a class="search-btn" href="{e(s.rel(cur, "/meklet"))}" data-search-open role="button" aria-label="Meklēt vietnē">{icon("search")}<span>Meklēt</span><kbd>/</kbd></a>
-<button type="button" class="menu-btn" aria-expanded="false" aria-controls="nav">{icon("menu", "when-closed")}{icon("x", "when-open")}<span>Izvēlne</span></button>
+<button type="button" class="menu-btn" aria-expanded="false" aria-controls="nav" aria-label="Izvēlne">{icon("menu", "when-closed")}{icon("x", "when-open")}<span>Izvēlne</span></button>
 </div></div></header>'''
 
     def footer(self, cur):
@@ -332,12 +379,13 @@ class Builder:
                             for p, label in paths if p in s.built)
             return f'<div class="footer-col"><h2>{e(title)}</h2><ul>{links}</ul></div>'
 
-        clients = [(t['path'], None) for t in s.nav if not t['mega']]
+        clients = [(t['path'], None) for t in s.nav if not t['mega']] + [(s.facts['noticesPage'], None)]
         company = [('/par-mums', None), (s.facts['newsPage'], None), ('/projekti', None), ('/vides-politika', None),
                    ('/iepirkumi', None), ('/par-mums/vakances', None), (s.facts['mediaPage'], None)]
         docs = [('/normativie-akti', None), ('/pamatprincipi-un-standarti/pamatprincipi-un-standarti', None),
                 ('/par-mums/parskati', None), ('/pamatprincipi-un-standarti/trauksmes-celsana', None),
-                ('/par-mums/privatuma-politika', None), ('/projekti/viegli-lasit', None)]
+                ('/par-mums/privatuma-politika', None), (s.facts['accessibilityPage'], None),
+                (s.facts['easyReadPage'], None)]
         social = ''.join(f'<li><a href="{e(x["url"])}" target="_blank" rel="noopener">{e(x["label"])}{icon("arrow-up-right")}</a></li>'
                          for x in self.cfg.get('social', []))
         return f'''<footer class="site-footer">
@@ -378,8 +426,13 @@ class Builder:
 <div class="search-results" data-search-results aria-live="polite"></div>
 </dialog>'''
 
-    def layout(self, cur, title, main, description='', canonical='', body_class=''):
+    def layout(self, cur, title, main, description='', canonical='', body_class='', head_extra=''):
         s = self.s
+        stats = self.cfg.get('analytics') or {}
+        if stats.get('plausibleDomain'):
+            # Plausible sets no cookies, so no consent banner is needed (see README)
+            head_extra += (f'<script defer data-domain="{e(stats["plausibleDomain"])}" '
+                           f'src="{e(stats.get("src") or "https://plausible.io/js/script.js")}"></script>\n')
         root = s.root(cur)
         full = title if cur == '/' else f'{title} | {self.cfg["name"]}'
         desc = description or self.cfg['description']
@@ -399,7 +452,7 @@ class Builder:
 <link rel="icon" href="{root}assets/img/favicon.ico">
 <script>(function(d){{d.className=d.className.replace('no-js','js');try{{var t=localStorage.getItem('vs-theme'),x=localStorage.getItem('vs-text');if(t)d.setAttribute('data-theme',t);if(x)d.setAttribute('data-text',x)}}catch(e){{}}}})(document.documentElement)</script>
 <link rel="stylesheet" href="{root}assets/css/main.css?v={s.version}">
-</head>
+{head_extra}</head>
 <body class="{body_class}" id="top">
 {self.header(cur)}
 <main id="saturs" tabindex="-1">
@@ -626,9 +679,42 @@ class Builder:
 <div class="hours-card"><h3>{icon("clock")}Klientu daļas un kases darba laiks</h3>{self.hours_table()}</div>
 </div></section>'''
 
-        main = hero + news + tasks + audiences + about + contact
+        main = hero + self.notice_band(cur) + news + tasks + audiences + about + contact
         self.write(cur, self.layout(cur, f'{self.cfg["name"]} — {self.cfg["tagline"]}', main,
-                                    canonical=s.origin, body_class='home'))
+                                    canonical=s.origin, body_class='home', head_extra=self.org_jsonld()))
+
+    def notice_band(self, cur):
+        """One line under the hero: the latest interruption notice, with its date, and a link to all of them."""
+        s = self.s
+        latest = s.notices[0] if s.notices else None
+        page = e(s.rel(cur, s.facts['noticesPage']))
+        item = (f'<span class="notice-band-latest">Jaunākais paziņojums '
+                f'<time datetime="{e(latest.date)}">{e(fmt_short(latest.date))}</time> — '
+                f'<a href="{e(s.rel(cur, latest.path))}">{e(latest.title)}</a></span>') if latest else ''
+        return (f'<section class="notice-band" aria-labelledby="notice-band-title"><div class="container notice-band-in">'
+                f'<h2 class="notice-band-title" id="notice-band-title">{icon("wrench")}Pārtraukumi un remontdarbi</h2>{item}'
+                f'<a class="more" href="{page}">Visi paziņojumi{icon("arrow-right")}</a></div></section>')
+
+    def org_jsonld(self):
+        """Schema.org data for search engines: the company, its address and its phone lines."""
+        c = self.c
+        street, town, postcode = [x.strip() for x in c['address'].split(',')]  # "Talsu iela 84, Ventspils, LV-3602"
+        data = {
+            '@context': 'https://schema.org', '@type': 'Organization',
+            'name': self.cfg['legalName'], 'alternateName': self.cfg['name'], 'url': self.s.origin,
+            'identifier': c['regNo'], 'email': c['email'], 'telephone': '+371' + c['phone'],
+            'address': {'@type': 'PostalAddress', 'streetAddress': street, 'addressLocality': town,
+                        'postalCode': postcode, 'addressCountry': 'LV'},
+            'contactPoint': [
+                {'@type': 'ContactPoint', 'contactType': 'customer service', 'telephone': '+371' + c['clientPhone'],
+                 'email': c['clientEmail'], 'availableLanguage': 'lv'},
+                {'@type': 'ContactPoint', 'contactType': 'emergency', 'telephone': '+371' + c['emergencyPhone'],
+                 'description': 'Siltumtrašu avārijas: karstā ūdens noplūde vai tvaiki uz ielas'},
+            ],
+            'sameAs': [x['url'] for x in self.cfg.get('social', [])],
+        }
+        text = json.dumps(data, ensure_ascii=False).replace('</', '<\\/')
+        return f'<script type="application/ld+json">{text}</script>\n'
 
     def sparkline(self, values):
         if len(values) < 2:
@@ -660,7 +746,9 @@ class Builder:
         if cur == s.facts['emergencyPage']:
             c = self.c
             parts.append(f'''<div class="alert-card alert-card-wide"><p class="alert-title">{icon("triangle-alert")}Ārējo siltumtrašu avāriju pieteikšana</p>
-<a class="alert-phone" href="tel:+371{c["emergencyPhone"]}">{icon("phone")}{fmt_phone(c["emergencyPhone"])}</a></div>''')
+<a class="alert-phone" href="tel:+371{c["emergencyPhone"]}">{icon("phone")}{fmt_phone(c["emergencyPhone"])}</a>
+<p class="alert-links"><a class="more" href="{e(s.rel(cur, FORMS[1]["path"]))}">Ziņot par bojājumu, kas nav steidzams{icon("arrow-right")}</a>
+<a class="more" href="{e(s.rel(cur, s.facts["noticesPage"]))}">Plānotie pārtraukumi un remontdarbi{icon("arrow-right")}</a></p></div>''')
         if cur == s.facts['contactsPage']:
             parts.append(self.contact_cards(cur))
 
@@ -670,13 +758,13 @@ class Builder:
 
         children = ''
         if is_landing:
-            cards = ''.join(self.link_card(cur, ch['path'], ch['title'],
-                                           s.pages[ch['path']].excerpt(120) if ch['path'] in s.pages else '',
-                                           ch.get('icon')) for ch in sec['children'])
+            cards = ''.join(self.link_card(cur, ch['path'], ch['title'], self.blurb(ch['path']), ch.get('icon'))
+                            for ch in sec['children'])
             children = f'<ul class="task-grid task-grid-2">{cards}</ul>'
 
         wide = ' prose-wide' if re.search(r'<table', body) else ''
-        prose = f'<div class="prose{wide}">{body}</div>' if body.strip() else ''
+        extra = f' {e(page.meta["class"])}' if page.meta.get('class') else ''
+        prose = f'<div class="prose{wide}{extra}">{body}</div>' if body.strip() else ''
         empty = ''
         if not children and not re.sub(r'<h[2-4][^>]*>.*?</h[2-4]>|<[^>]+>|\s+', '', body, flags=re.S):
             empty = '<p class="empty">Šobrīd šajā sadaļā aktuālas informācijas nav.</p>'
@@ -692,6 +780,150 @@ class Builder:
             top = s.top.get(cur)
             label = s.nav[top]['title'] if top is not None else ''
             self.index(page, sec['title'] if sec and sec['path'] != cur else label)
+
+    def blurb(self, path):
+        """Short description of a page for link cards."""
+        s = self.s
+        own = {s.facts['noticesPage']: 'Plānotie karstā ūdens un siltuma padeves pārtraukumi, remontdarbi un apkures sezona.',
+               FORMS[0]['path']: 'Pieteikt rēķina saņemšanu e-pastā tiešsaistē.',
+               FORMS[1]['path']: 'Pastāstīt par bojājumu, kas nav steidzams, vai par problēmu ar siltumapgādi.'}
+        if path in own:
+            return own[path]
+        return s.pages[path].excerpt(120) if path in s.pages else ''
+
+    def notice_list(self, cur, items):
+        rows = ''.join(f'<li><a href="{e(self.s.rel(cur, p.path))}"><time datetime="{e(p.date)}">{e(fmt_short(p.date))}</time>'
+                       f'<span>{e(p.title)}</span></a></li>' for p in items)
+        return f'<ul class="notice-list">{rows}</ul>'
+
+    def notices_page(self):
+        """Interruptions and works: where to call, the latest notices, the heating season and an archive by year."""
+        s, c = self.s, self.c
+        cur = s.facts['noticesPage']
+        title = s.title(cur)
+        latest = s.notices[:6]
+        recent = ''
+        if latest:
+            first = latest[0]
+            recent = (f'<h2>Jaunākie paziņojumi</h2>'
+                      f'<p class="notice-meta">Jaunākais paziņojums publicēts <time datetime="{e(first.date)}">'
+                      f'{e(fmt_date(first.date))}</time>.</p>'
+                      f'<div class="news-grid news-grid-2">{"".join(self.news_card(cur, p) for p in latest[:4])}</div>')
+        season = ''
+        if s.season:
+            season = (f'<h2>Apkures sezona</h2><p>Paziņojumi par apkures sezonas sākumu un beigām.</p>'
+                      f'{self.notice_list(cur, s.season[:5])}')
+        years = {}
+        for p in s.notices:
+            years.setdefault(p.date[:4], []).append(p)
+        archive = ''.join(f'<details class="notice-year"{" open" if i == 0 else ""}><summary>{e(y)} '
+                          f'<span>({len(items)})</span></summary>{self.notice_list(cur, items)}</details>'
+                          for i, (y, items) in enumerate(sorted(years.items(), reverse=True)))
+        guide = f'''<div class="notice-guide">
+<div class="alert-card"><p class="alert-title">{icon("triangle-alert")}Uz ielas plūst karstais ūdens vai nāk tvaiki?</p>
+<p>Zvaniet uzreiz, arī naktī un brīvdienās:</p>
+<a class="alert-phone" href="tel:+371{c["emergencyPhone"]}">{icon("phone")}{fmt_phone(c["emergencyPhone"])}</a></div>
+<div class="info-card"><p class="info-title">{icon("house")}Dzīvoklī nav apkures vai karstā ūdens?</p>
+<p>Ja šajā lapā par jūsu adresi paziņojuma nav, sazinieties ar savas mājas apsaimniekotāju — viņš atbild par mājas iekšējo apkures sistēmu.</p>
+<a class="more" href="{e(s.rel(cur, s.facts["emergencyPage"]))}">Kā rīkoties{icon("arrow-right")}</a></div>
+</div>'''
+        lead = 'Paziņojumi par karstā ūdens un siltuma padeves pārtraukumiem, remontdarbiem un apkures sezonu.'
+        side = self.side_nav(cur)
+        content = (guide + recent + season +
+                   (f'<h2>Visi paziņojumi</h2><div class="notice-archive">{archive}</div>' if archive else
+                    '<p class="empty">Paziņojumu pagaidām nav.</p>'))
+        main = (self.page_head(cur, title, lead, narrow=not side) +
+                f'<div class="container layout{" has-side" if side else ""}">{side}'
+                f'<article class="content notices">{content}{self.help_box(cur)}</article></div>')
+        self.write(cur, self.layout(cur, title, main, description=lead))
+        self.search.append([title, s.file(cur), 'Iedzīvotājiem',
+                            lead + ' karstā ūdens atslēgums pārtraukums remontdarbi apkures sezona'])
+
+    # -- forms --------------------------------------------------------------
+    def field(self, fid, label, kind='text', required=False, hint='', auto='', extra=''):
+        req = ' required' if required else ''
+        mark = '' if required else ' <span class="optional">(nav obligāti)</span>'
+        hint_html = f'<p class="hint" id="{fid}-hint">{hint}</p>' if hint else ''
+        described = f' aria-describedby="{fid}-hint"' if hint else ''
+        autocomplete = f' autocomplete="{auto}"' if auto else ''
+        if kind == 'textarea':
+            control = f'<textarea id="{fid}" name="{fid}" rows="5"{req}{described}{extra}></textarea>'
+        else:
+            control = f'<input id="{fid}" name="{fid}" type="{kind}"{req}{described}{autocomplete}{extra}>'
+        return f'<div class="form-field"><label for="{fid}">{label}{mark}</label>{hint_html}{control}</div>'
+
+    def form_page(self, spec, intro, fields, submit, aside=''):
+        s, c = self.s, self.c
+        cur = spec['path']
+        thanks = e(s.rel(cur, s.facts['thanksPage']))
+        privacy = e(s.rel(cur, s.facts['privacyPage']))
+        preview = ''
+        if self.cfg.get('previewNotice'):
+            preview = (f'<p class="form-preview">{icon("info")}<span>Šī ir vietnes priekšskatījuma versija: veidlapa vēl nav '
+                       f'savienota ar Klientu daļu, tāpēc pieteikumi netiek apstrādāti. Lūdzu, rakstiet uz '
+                       f'<a href="mailto:{e(c["clientEmail"])}">{e(c["clientEmail"])}</a> vai zvaniet '
+                       f'<a href="tel:+371{c["clientPhone"]}">{fmt_phone(c["clientPhone"])}</a>.</span></p>')
+        form = f'''<form class="form" name="{spec["name"]}" method="post" action="{thanks}" data-netlify="true" netlify-honeypot="bot-field">
+<input type="hidden" name="form-name" value="{spec["name"]}">
+<p class="form-trap" aria-hidden="true"><label>Neaizpildiet šo lauku: <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
+<p class="form-required">Lauki bez norādes „nav obligāti” ir jāaizpilda.</p>
+{"".join(fields)}
+<div class="form-field form-check"><input id="piekrisana" name="piekrisana" type="checkbox" value="jā" required>
+<label for="piekrisana">Piekrītu, ka „Ventspils siltums” izmanto šos datus, lai izskatītu pieteikumu un sazinātos ar mani. Kā mēs apstrādājam datus, skatiet <a href="{privacy}">privātuma politikā</a>.</label></div>
+<button class="btn btn-primary" type="submit">{submit}{icon("arrow-right")}</button>
+</form>'''
+        side = self.side_nav(cur)
+        main = (self.page_head(cur, spec['title'], narrow=not side) +
+                f'<div class="container layout{" has-side" if side else ""}">{side}'
+                f'<article class="content"><div class="prose">{intro}</div>{aside}{preview}{form}{self.help_box(cur)}</article></div>')
+        self.write(cur, self.layout(cur, spec['title'], main, description=self.blurb(cur)))
+        self.search.append([spec['title'], s.file(cur), 'Iedzīvotājiem', self.blurb(cur)])
+
+    def forms(self):
+        s, c = self.s, self.c
+        einv, fault = FORMS
+        self.form_page(
+            einv,
+            f'''<p>Rēķinu par siltumu var saņemt e-pastā papīra rēķina vietā. Aizpildiet veidlapu, un Klientu daļa pieteikumu izskatīs.</p>
+<p>Pieteikt var arī, rakstot uz <a href="mailto:{e(c["clientEmail"])}">{e(c["clientEmail"])}</a> vai zvanot <a href="tel:+371{c["clientPhone"]}">{fmt_phone(c["clientPhone"])}</a>.</p>''',
+            [self.field('vards', 'Vārds, uzvārds', required=True, auto='name'),
+             self.field('adrese', 'Adrese, par kuru saņemat rēķinu', required=True, auto='street-address',
+                        hint='Piemēram: Talsu iela 84-12, Ventspils'),
+             self.field('klienta-numurs', 'Klienta numurs', hint='Ja to nezināt, atstājiet tukšu — pietiek ar adresi.',
+                        extra=' inputmode="numeric"'),
+             self.field('e-pasts', 'E-pasts, uz kuru sūtīt rēķinu', kind='email', required=True, auto='email'),
+             self.field('talrunis', 'Tālrunis', kind='tel', auto='tel', hint='Ja būs jāprecizē kāda informācija.')],
+            'Pieteikt rēķinu e-pastā')
+        aside = f'''<div class="alert-card"><p class="alert-title">{icon("triangle-alert")}Steidzami? Nerakstiet — zvaniet</p>
+<p>Ja uz ielas plūst karstais ūdens vai nāk tvaiki, zvaniet:</p>
+<a class="alert-phone" href="tel:+371{c["emergencyPhone"]}">{icon("phone")}{fmt_phone(c["emergencyPhone"])}</a>
+<p>Ja dzīvoklī nav apkures vai karstā ūdens, sazinieties ar savas mājas apsaimniekotāju.</p></div>'''
+        self.form_page(
+            fault,
+            '<p>Ar šo veidlapu varat pastāstīt par bojājumu, kas nav steidzams, vai par citu problēmu ar pilsētas siltumapgādi.</p>',
+            [self.field('vieta', 'Kur tas ir?', required=True, auto='street-address',
+                        hint='Adrese vai vieta, piemēram, krustojums vai pagalms.'),
+             self.field('apraksts', 'Ko pamanījāt?', kind='textarea', required=True),
+             self.field('vards', 'Vārds, uzvārds', auto='name'),
+             self.field('kontakts', 'Tālrunis vai e-pasts',
+                        hint='Ja vēlaties, lai ar jums sazinās.')],
+            'Nosūtīt ziņojumu', aside=aside)
+
+    def thanks_page(self):
+        s, c = self.s, self.c
+        cur = s.facts['thanksPage']
+        note = ('<p>Šī ir vietnes priekšskatījuma versija: pieteikumi vēl netiek nodoti Klientu daļai. '
+                f'Lūdzu, rakstiet uz <a href="mailto:{e(c["clientEmail"])}">{e(c["clientEmail"])}</a> vai zvaniet '
+                f'<a href="tel:+371{c["clientPhone"]}">{fmt_phone(c["clientPhone"])}</a>.</p>'
+                if self.cfg.get('previewNotice') else
+                '<p>Paldies! Klientu daļa pieteikumu izskatīs un, ja vajadzēs, sazināsies ar jums.</p>')
+        main = (self.page_head(cur, s.title(cur), narrow=True) +
+                f'<div class="container"><article class="content"><div class="prose">{note}'
+                f'<p>Steidzamos gadījumos zvaniet: siltumtrašu avārijas <a href="tel:+371{c["emergencyPhone"]}">'
+                f'{fmt_phone(c["emergencyPhone"])}</a>, Klientu daļa <a href="tel:+371{c["clientPhone"]}">'
+                f'{fmt_phone(c["clientPhone"])}</a>.</p></div>'
+                f'<p class="empty"><a class="btn btn-primary" href="{e(s.rel(cur, "/"))}">Uz sākumlapu</a></p></article></div>')
+        self.write(cur, self.layout(cur, s.title(cur), main))
 
     def contact_cards(self, cur):
         c, s = self.c, self.s
@@ -874,8 +1106,11 @@ class Builder:
         for page in s.videos:
             self.video(page)
         for page in s.pages.values():
-            if page.type == 'page':
+            if page.type == 'page' and page.path != s.facts['noticesPage']:
                 self.standard(page)
+        self.notices_page()
+        self.forms()
+        self.thanks_page()
         self.news_index()
         self.media_index()
         self.search_page()

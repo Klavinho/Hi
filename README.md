@@ -32,6 +32,9 @@ ieslēgt GitHub Pages (Settings → Pages → šis zars, mape `/docs`).
 | Kontakti vienā lielā tabulā | Kontaktu kartītes (Klientu daļa ar darba laiku, administrācija, avārijas) un pilnā tabula zem tām |
 | Iepirkumu tabulas telefonā jāritina sāniski | Telefonā tabulas rindas pārkārtojas par kartītēm |
 | Sīkdatņu josla aizsedz saturu | Vietne neizmanto sīkdatnes; iestatījumi (tumšais režīms, teksta izmērs) glabājas tikai pārlūkā |
+| Paziņojumi par karstā ūdens atslēgumiem pazūd jaunumu plūsmā; lapa „Remonti” tukša | Lapa „Pārtraukumi un remontdarbi” (`remonti.html`): kur zvanīt, jaunākie paziņojumi, apkures sezona, arhīvs pa gadiem. Saite ir katras lapas augšā, sākumlapā, izvēlnē un kājenē |
+| Pieteikties var tikai pa e-pastu vai tālruni | Veidlapas „Pieteikt rēķinu e-pastā” un „Ziņot par bojājumu” (Netlify Forms) |
+| Nav piekļūstamības paziņojuma; „Viegli lasīt” satur ES projekta aprakstu | Piekļūstamības paziņojums un īsta „Viegli lasīt” lapa; ES projektu lapa pārdēvēta |
 
 Papildus: gaišais un tumšais režīms, teksta izmēra poga, šodienas diena izcelta darba laika tabulās, navigācija
 ar tastatūru, „Pāriet uz saturu” saite, teksta krāsu kontrasts pārbaudīts pret WCAG 2.1 AA (vismaz 4,5:1),
@@ -44,6 +47,7 @@ drukas stils. Bez JavaScript lapas joprojām ir lasāmas un izvēlne darbojas.
 ```
 site.json            izvēlnes struktūra, kontakti, sākumlapas bloki
 content/             lapu saturs (783 faili, importēti no esošās vietnes)
+pages/               šai vietnei rakstītās lapas (piekļūstamības paziņojums, „Viegli lasīt”); imports tās neaiztiek
 src/css/main.css     dizaina sistēma: krāsas, tipogrāfija, komponentes
 src/js/main.js       izvēlne, meklēšana, jaunumu filtrs, galerija
 src/icons/           ikonas (SVG)
@@ -70,6 +74,35 @@ Tarifs sākumlapā un Klientu daļas darba laiks netiek rakstīti divreiz: ģene
 `content/tarifs.html` (tabulas pirmā rinda) un `content/klientu-pienemsanas-laiks.html`. Tālruņi, e-pasti un
 adrese galvenē un kājenē ir failā `site.json`.
 
+### Pārtraukumi un remontdarbi
+
+Lapā `remonti.html` un sākumlapas joslā nonāk jaunumi, kuru virsrakstā ir vārdi par atslēgumiem, pārtraukumiem,
+remontdarbiem vai avārijām (piemēram, „nebūs karstā ūdens”, „atslēgums”, „remontdarbi”). Jauns paziņojums
+parādās automātiski, kad jaunumu pievieno mapei `content/par-mums/jaunumi/`. Ja automātika kļūdās, jaunuma
+datu blokā var ierakstīt `"notice": true` vai `"notice": false`, vai pievienot adresi sarakstam
+`noticesExclude` failā `site.json`. Paziņojumi par apkures sezonas sākumu un beigām tiek rādīti atsevišķi.
+
+### Veidlapas
+
+Veidlapas „Pieteikt rēķinu e-pastā” (`iedzivotajiem/e-rekins.html`) un „Ziņot par bojājumu”
+(`iedzivotajiem/zinot-par-bojajumu.html`) izmanto [Netlify Forms](https://docs.netlify.com/manage/forms/setup/):
+serveris nav vajadzīgs. Lai tās darbotos:
+
+1. Netlify projektā ieslēgt veidlapu noteikšanu (Forms → Enable form detection) un vietni publicēt vēlreiz.
+2. Forms → Form notifications: iestatīt, uz kuru e-pastu sūtīt pieteikumus (piemēram, Klientu daļai).
+3. Papildināt privātuma politiku: pieteikumi tiek glabāti Netlify (ASV uzņēmums). Ja tas nav pieņemami,
+   veidlapām jāizvēlas cits saņēmējs (piemēram, uzņēmuma e-pasta serveris vai klientu sistēma).
+
+Kamēr `previewNotice` ir `true`, veidlapās ir brīdinājums, ka pieteikumi netiek apstrādāti. Steidzamām
+avārijām veidlapa nav paredzēta — tajā ir norāde zvanīt 636 02 240.
+
+### Apmeklējumu statistika
+
+Vietne neizmanto sīkdatnes, tāpēc statistikai ieteicams rīks bez sīkdatnēm, piemēram,
+[Plausible](https://plausible.io). Lai to ieslēgtu, failā `site.json` ierakstiet domēnu laukā
+`analytics.plausibleDomain` (piemēram, `"ventspilssiltums.lv"`) un pārbūvējiet vietni. Pēc noklusējuma
+statistika ir izslēgta. Ja izvēlas citu rīku, kas izmanto sīkdatnes, vajadzēs arī piekrišanas joslu.
+
 ### Satura atkārtots imports
 
 ```sh
@@ -88,7 +121,7 @@ Pēc izmaiņām dizainā vai skriptos vērts palaist trīs pārbaudes (vajadzīg
 ```sh
 python3 -m http.server 8000 --directory docs &
 python3 tools/qa/linkcheck.py   # bojātas iekšējās saites un atkārtoti id
-node tools/qa/behave.js         # tastatūra, meklēšana, filtri, mobilā izvēlne, darbība bez JavaScript
+node tools/qa/behave.js         # tastatūra, meklēšana, filtri, mobilā izvēlne, veidlapas, fokuss, darbība bez JavaScript
 node tools/qa/widths.js         # sāniska ritināšana 11 ekrāna platumos (320–1920 px)
 ```
 
@@ -122,6 +155,15 @@ Dizaina pārbaudi var palaist arī ar roku:
   to adreses darbotos, bet izvēlnēs un meklēšanā nav iekļautas. Jāizlemj, kuras no tām vēl ir aktuālas.
 - Vietni var izmantot arī kā paraugu esošās Drupal tēmas pārveidei: `src/css/main.css` un HTML struktūra
   failā `tools/build.py` nav piesaistīta ģeneratoram.
+
+- **Piekļūstamības paziņojums** (`pages/pieklustamibas-pazinojums.html`) ir sagatavots pēc pašnovērtējuma
+  2026. gada 17. novembrī. Uzņēmumam jāapstiprina atbildīgā persona un sūdzību kārtība, un paziņojums
+  jāpārskata vismaz reizi gadā vai pēc lielām izmaiņām.
+- **„Viegli lasīt”** (`pages/viegli-lasit.html`) ir rakstīts no esošās vietnes faktiem; tekstu vēlams pārbaudīt
+  ar vieglās valodas speciālistu un apstiprināt.
+- **Zīmola krāsa.** Vietnē izmantots `#b93414`, bet esošās vietnes krāsa ir `#d2232a`. Jāsaskaņo ar uzņēmumu.
+- **Krievu valodas lapa** `ru/ustranenie-avariy-i-povrezhdeniy.html` ir pārņemta no esošās vietnes; jāizlemj,
+  vai tā vajadzīga.
 
 ## Licences
 
