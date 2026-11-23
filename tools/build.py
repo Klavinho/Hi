@@ -112,6 +112,14 @@ class Site:
         for path, title in self.cfg.get('titleOverrides', {}).items():
             if path in self.pages:
                 self.pages[path].title = title
+        # Small corrections to imported pages, kept here so that a re-import of content/ does not undo them.
+        # A fix whose text is no longer found is reported and skipped (the source has probably been corrected).
+        for fix in self.cfg.get('contentFixes', []):
+            page = self.pages.get(fix['path'])
+            if page and fix['find'] in page.body:
+                page.body = page.body.replace(fix['find'], fix['replace'])
+            else:
+                print(f"note: content fix not applied, text not found in {fix['path']}: {fix.get('why', '')}")
         self.out = out
         self.asset = self.cfg['assetBase'].rstrip('/')
         self.origin = self.cfg['origin'].rstrip('/')
