@@ -106,8 +106,7 @@ const check = (name, ok, detail) => results.push({ name, ok: !!ok, detail });
   const band = await page.evaluate(() => { const a = document.querySelector('.notice-band .more'); return a && a.getAttribute('href'); });
   check('home page links to interruptions and works', band === 'remonti.html', band);
   const footer = await page.evaluate(() => [...document.querySelectorAll('.site-footer a')].map((a) => a.getAttribute('href')));
-  check('footer links to the accessibility statement and easy-read page',
-    footer.includes('pieklustamibas-pazinojums.html') && footer.includes('viegli-lasit.html'), footer.length + ' links');
+  check('footer links to the easy-read page', footer.includes('viegli-lasit.html'), footer.length + ' links');
   check('structured data names the emergency line', await page.evaluate(() => {
     const d = JSON.parse(document.querySelector('script[type="application/ld+json"]').textContent);
     return d.contactPoint.some((c) => c.contactType === 'emergency' && /63602240/.test(c.telephone)); }));

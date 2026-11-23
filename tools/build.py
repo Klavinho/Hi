@@ -392,6 +392,7 @@ class Builder:
                    ('/iepirkumi', None), ('/par-mums/vakances', None), (s.facts['mediaPage'], None)]
         docs = [('/normativie-akti', None), ('/pamatprincipi-un-standarti/pamatprincipi-un-standarti', None),
                 ('/par-mums/parskati', None), ('/pamatprincipi-un-standarti/trauksmes-celsana', None),
+                # the accessibility statement is listed only while its page exists (the draft is in drafts/)
                 ('/par-mums/privatuma-politika', None), (s.facts['accessibilityPage'], None),
                 (s.facts['easyReadPage'], None)]
         social = ''.join(f'<li><a href="{e(x["url"])}" target="_blank" rel="noopener">{e(x["label"])}{icon("arrow-up-right")}</a></li>'

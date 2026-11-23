@@ -52,7 +52,7 @@ Vēl neizlemts vai gaida uzņēmuma apstiprinājumu:
 - Attēli un dokumenti tiek ielādēti no ventspilssiltums.lv (`assetBase`); nav izlemts, vai tos pārcelt.
 - Nav zināms, vai un kad pārbūve aizstās esošo vietni un kur tā tiks izvietota.
 - Kur nonāk veidlapu pieteikumi (Netlify Forms vai uzņēmuma sistēma) un kas tos apstrādā; privātuma politika jāpapildina.
-- Piekļūstamības paziņojuma atbildīgā persona un sūdzību kārtība; „Viegli lasīt” teksta apstiprināšana.
+- Piekļūstamības paziņojums vietnē pagaidām nav publicēts (melnraksts `drafts/pieklustamibas-pazinojums.html`): jāiegūst uzņēmuma dati nesamērīgā sloga aprēķinam un termiņiem, jāapstiprina atbildīgā persona un sūdzību kārtība. „Viegli lasīt” tekstu vēl jāapstiprina.
 - Zīmola krāsa: vietnē `#b93414`, esošajā vietnē `#d2232a` (pretrunā ar apņemšanos saglabāt krāsas) — jāsaskaņo.
 - Galvenie lietotāju uzdevumi vēl nav pārbaudīti ar lietotājiem; ieteikta neliela aptauja (~30 atbildes) un lietojamības tests ar 5 cilvēkiem.
 
@@ -78,4 +78,4 @@ Vēl neizlemts vai gaida uzņēmuma apstiprinājumu:
 
 ## Accessibility & Inclusion
 
-Lapai jāatbilst valsts un pašvaldību iestāžu tīmekļvietņu piekļūstamības prasībām — WCAG 2.1 AA (apstiprināts). Mērķis ir WCAG 2.2 AA, kā ieteikts 2026. gada novembra pētījuma ziņojumā par vietnes pārbūvi; ir piekļūstamības paziņojums (MK noteikumi Nr. 445).
+Lapai jāatbilst valsts un pašvaldību iestāžu tīmekļvietņu piekļūstamības prasībām — WCAG 2.1 AA (apstiprināts). Mērķis ir WCAG 2.2 AA, kā ieteikts 2026. gada novembra pētījuma ziņojumā par vietnes pārbūvi. Piekļūstamības paziņojums (MK noteikumi Nr. 445) ir sagatavots kā melnraksts un tiks publicēts, kad uzņēmums to papildinās.
