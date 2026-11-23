@@ -127,6 +127,13 @@ node tools/qa/widths.js         # sāniska ritināšana 11 ekrāna platumos (320
 
 `tools/qa/shots.js` uzņem ekrānuzņēmumus pēc saraksta JSON failā.
 
+`tools/qa/a11y_inventory.py` (vajag `openpyxl`) izveido Excel sarakstu ar attēliem tekstā, video un galerijām,
+ko uzņēmums aizpilda piekļūstamības paziņojumam un ikgadējam izvērtējumam:
+`python3 tools/qa/a11y_inventory.py pieklustamiba-saraksts.xlsx`.
+
+Nelieli imports satura labojumi (piemēram, sadalīta saite iepirkumu tabulā) ir failā `site.json` → `contentFixes`,
+tāpēc atkārtots imports tos neatceļ.
+
 ### Dizaina rīks Impeccable
 
 Mapē `.claude/` ir [Impeccable](https://impeccable.style) — dizaina prasme Claude Code (komandas

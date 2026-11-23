@@ -184,6 +184,10 @@
     "/projekti/viegli-lasit": "Eiropas Savienības līdzfinansētie projekti"
   },
 
+  "contentFixes": [
+    {"path": "/iepirkumi", "why": "Saite „Noteikts uzvarētājs” esošajā vietnē sadalīta divās daļās (VS 25/68)", "find": "<a href=\"/sites/default/files/2026-01/VS%2025-68.pdf\" target=\"_blank\">Noteikts uzvarētāj</a><a href=\"/sites/default/files/2026-01/Noteikts%20uzvar%C4%93t%C4%81js%20%282%29.docx\" target=\"_blank\">s</a>", "replace": "<a href=\"/sites/default/files/2026-01/VS%2025-68.pdf\" target=\"_blank\">Noteikts uzvarētājs</a><br><a href=\"/sites/default/files/2026-01/Noteikts%20uzvar%C4%93t%C4%81js%20%282%29.docx\" target=\"_blank\">Noteikts uzvarētājs (DOCX)</a>"}
+  ],
+
   "noticesExclude": [],
 
   "analytics": { "plausibleDomain": "", "src": "https://plausible.io/js/script.js" },
