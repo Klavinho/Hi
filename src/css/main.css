@@ -740,6 +740,9 @@ main:has(> .section-tint:last-child) + .site-footer { margin-top: 0; }
 .form-preview .i { flex: none; margin-top: .2em; color: var(--brand-strong); }
 .content > .alert-card { margin-top: 1.6rem; max-width: 40rem; }
 
+/* text the company still has to fill in; the build lists every page that has some */
+mark.todo { padding: 0 .2em; border-radius: 4px; background: var(--amber); color: #1e1a17; font-weight: 700; }
+
 /* easy-to-read page: larger text, one idea per line */
 .prose.easy-read { font-size: 1.25rem; line-height: 1.75; }
 .prose.easy-read h2 { margin-top: 2.4rem; font-size: 1.55rem; }

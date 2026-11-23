@@ -1129,6 +1129,10 @@ class Builder:
         (s.out / '.nojekyll').write_text('', encoding='utf-8')
         if not self.cfg.get('indexable'):
             (s.out / 'robots.txt').write_text('User-agent: *\nDisallow: /\n', encoding='utf-8')
+        for page in s.pages.values():
+            todo = page.body.count('class="todo"')
+            if todo:
+                print(f'note: {page.path} has {todo} place(s) marked [jāaizpilda: …] for the company to fill in')
         total = sum(1 for _ in s.out.rglob('*.html'))
         print(f'built {total} pages -> {s.out.relative_to(ROOT) if s.out.is_relative_to(ROOT) else s.out}/')
 

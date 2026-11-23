@@ -164,8 +164,10 @@ Dizaina pārbaudi var palaist arī ar roku:
   failā `tools/build.py` nav piesaistīta ģeneratoram.
 
 - **Piekļūstamības paziņojums** (`pages/pieklustamibas-pazinojums.html`) ir sagatavots pēc pašnovērtējuma
-  2026. gada 17. novembrī. Uzņēmumam jāapstiprina atbildīgā persona un sūdzību kārtība, un paziņojums
-  jāpārskata vismaz reizi gadā vai pēc lielām izmaiņām.
+  2026. gada 17. novembrī. Dzeltenās vietas `<mark class="todo">[jāaizpilda: …]</mark>` aizpilda uzņēmums:
+  nesamērīgā sloga aprēķins (stundas, izmaksas, lietošanas dati, apstiprinātājs), termiņi attēlu un video
+  pārbaudei, atbildes termiņš un termiņš informācijai citā formātā. Būvēšana tās uzskaita (`note: … jāaizpilda`).
+  Paziņojums jāpārskata vismaz reizi gadā (vienkāršotais izvērtējums pēc VARAM metodikas līdz 22. decembrim).
 - **„Viegli lasīt”** (`pages/viegli-lasit.html`) ir rakstīts no esošās vietnes faktiem; tekstu vēlams pārbaudīt
   ar vieglās valodas speciālistu un apstiprināt.
 - **Zīmola krāsa.** Vietnē izmantots `#b93414`, bet esošās vietnes krāsa ir `#d2232a`. Jāsaskaņo ar uzņēmumu.
