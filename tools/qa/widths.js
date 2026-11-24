@@ -14,7 +14,7 @@ const PAGES = [
   '/par-mums/pazinojumi.html', '/par-mums/jaunumi/top-jauni-siltumtikli.html', '/video-foto.html', '/meklet.html',
   '/pamatprincipi-un-standarti/etikas-kodekss.html', '/projekti/siltumtrasu-rekonstrukcijas-projekti.html',
   '/pakalpojumi/informacija-par-eku-siltumenergijas-paterinu.html', '/remonti.html', '/iedzivotajiem/zinot-par-bojajumu.html',
-  '/viegli-lasit.html', '/pieklustamibas-pazinojums.html',
+  '/viegli-lasit.html',
 ];
 const WIDTHS = [320, 360, 390, 600, 768, 1024, 1152, 1200, 1280, 1440, 1920];
 

@@ -34,7 +34,7 @@ ieslēgt GitHub Pages (Settings → Pages → šis zars, mape `/docs`).
 | Sīkdatņu josla aizsedz saturu | Vietne neizmanto sīkdatnes; iestatījumi (tumšais režīms, teksta izmērs) glabājas tikai pārlūkā |
 | Paziņojumi par karstā ūdens atslēgumiem pazūd jaunumu plūsmā; lapa „Remonti” tukša | Lapa „Pārtraukumi un remontdarbi” (`remonti.html`): kur zvanīt, jaunākie paziņojumi, apkures sezona, arhīvs pa gadiem. Saite ir katras lapas augšā, sākumlapā, izvēlnē un kājenē |
 | Pieteikties var tikai pa e-pastu vai tālruni | Veidlapas „Pieteikt rēķinu e-pastā” un „Ziņot par bojājumu” (Netlify Forms) |
-| Nav piekļūstamības paziņojuma; „Viegli lasīt” satur ES projekta aprakstu | Piekļūstamības paziņojums un īsta „Viegli lasīt” lapa; ES projektu lapa pārdēvēta |
+| „Viegli lasīt” satur ES projekta aprakstu | Īsta „Viegli lasīt” lapa; ES projektu lapa pārdēvēta |
 
 Papildus: gaišais un tumšais režīms, teksta izmēra poga, šodienas diena izcelta darba laika tabulās, navigācija
 ar tastatūru, „Pāriet uz saturu” saite, teksta krāsu kontrasts pārbaudīts pret WCAG 2.1 AA (vismaz 4,5:1),
@@ -47,7 +47,8 @@ drukas stils. Bez JavaScript lapas joprojām ir lasāmas un izvēlne darbojas.
 ```
 site.json            izvēlnes struktūra, kontakti, sākumlapas bloki
 content/             lapu saturs (783 faili, importēti no esošās vietnes)
-pages/               šai vietnei rakstītās lapas (piekļūstamības paziņojums, „Viegli lasīt”); imports tās neaiztiek
+pages/               šai vietnei rakstītās lapas („Viegli lasīt”); imports tās neaiztiek
+drafts/              melnraksti, kas vietnē netiek publicēti (piekļūstamības paziņojums)
 src/css/main.css     dizaina sistēma: krāsas, tipogrāfija, komponentes
 src/js/main.js       izvēlne, meklēšana, jaunumu filtrs, galerija
 src/icons/           ikonas (SVG)
@@ -163,9 +164,11 @@ Dizaina pārbaudi var palaist arī ar roku:
 - Vietni var izmantot arī kā paraugu esošās Drupal tēmas pārveidei: `src/css/main.css` un HTML struktūra
   failā `tools/build.py` nav piesaistīta ģeneratoram.
 
-- **Piekļūstamības paziņojums** (`pages/pieklustamibas-pazinojums.html`) ir sagatavots pēc pašnovērtējuma
-  2026. gada 17. novembrī. Uzņēmumam jāapstiprina atbildīgā persona un sūdzību kārtība, un paziņojums
-  jāpārskata vismaz reizi gadā vai pēc lielām izmaiņām.
+- **Piekļūstamības paziņojums vietnē pagaidām nav publicēts.** Melnraksts ir `drafts/pieklustamibas-pazinojums.html`
+  (mape `drafts/` netiek iekļauta vietnē). Dzeltenās vietas `[jāaizpilda: …]` aizpilda uzņēmums: nesamērīgā sloga
+  aprēķins, termiņi attēlu un video pārbaudei, atbildes termiņš un termiņš informācijai citā formātā. Kad tas
+  gatavs, failu pārvieto uz `pages/` un pārbūvē vietni — saite kājenē parādās automātiski. Paziņojums jāpārskata
+  vismaz reizi gadā (vienkāršotais izvērtējums pēc VARAM metodikas līdz 22. decembrim).
 - **„Viegli lasīt”** (`pages/viegli-lasit.html`) ir rakstīts no esošās vietnes faktiem; tekstu vēlams pārbaudīt
   ar vieglās valodas speciālistu un apstiprināt.
 - **Zīmola krāsa.** Vietnē izmantots `#b93414`, bet esošās vietnes krāsa ir `#d2232a`. Jāsaskaņo ar uzņēmumu.

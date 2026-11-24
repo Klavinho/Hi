@@ -392,6 +392,7 @@ class Builder:
                    ('/iepirkumi', None), ('/par-mums/vakances', None), (s.facts['mediaPage'], None)]
         docs = [('/normativie-akti', None), ('/pamatprincipi-un-standarti/pamatprincipi-un-standarti', None),
                 ('/par-mums/parskati', None), ('/pamatprincipi-un-standarti/trauksmes-celsana', None),
+                # the accessibility statement is listed only while its page exists (the draft is in drafts/)
                 ('/par-mums/privatuma-politika', None), (s.facts['accessibilityPage'], None),
                 (s.facts['easyReadPage'], None)]
         social = ''.join(f'<li><a href="{e(x["url"])}" target="_blank" rel="noopener">{e(x["label"])}{icon("arrow-up-right")}</a></li>'
@@ -1129,6 +1130,10 @@ class Builder:
         (s.out / '.nojekyll').write_text('', encoding='utf-8')
         if not self.cfg.get('indexable'):
             (s.out / 'robots.txt').write_text('User-agent: *\nDisallow: /\n', encoding='utf-8')
+        for page in s.pages.values():
+            todo = page.body.count('class="todo"')
+            if todo:
+                print(f'note: {page.path} has {todo} place(s) marked [jāaizpilda: …] for the company to fill in')
         total = sum(1 for _ in s.out.rglob('*.html'))
         print(f'built {total} pages -> {s.out.relative_to(ROOT) if s.out.is_relative_to(ROOT) else s.out}/')
 
